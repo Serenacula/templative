@@ -27,3 +27,15 @@ When copying a template, the following are always excluded:
 -   No remote/git URL templates.
 -   No symlink support (symlinks in templates cause an error).
 -   Initial commit requires `user.name` and `user.email` to be set in git config.
+
+## Releases
+
+Automated release/publish is configured with:
+
+-   `.github/workflows/release-plz.yml` for versioned releases and crates.io publishing.
+-   `.github/workflows/dist.yml` for multi-platform artifacts attached to GitHub Releases.
+-   `dist-workspace.toml` for cargo-dist target/installers configuration.
+
+Required repository secret:
+
+-   `CARGO_REGISTRY_TOKEN` (crates.io publish token).

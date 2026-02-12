@@ -9,6 +9,7 @@ repository = "https://github.com/serenacula/templative"
 homepage = "https://github.com/serenacula/templative"
 keywords = ["template", "cli", "scaffold", "project"]
 categories = ["command-line-utilities", "development-tools"]
+publish = false
 
 [profile.release]
 lto = true

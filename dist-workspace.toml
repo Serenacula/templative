@@ -1,0 +1,22 @@
+[dist]
+# Keep this in sync with the cargo-dist version used in CI.
+cargo-dist-version = "0.29.0"
+
+# Generate GitHub CI and release artifacts.
+ci = ["github"]
+
+# We publish a binary crate and do not use npm/homebrew installers yet.
+installers = ["shell", "powershell"]
+
+# Keep CI scope small to avoid excessive runtime/cost.
+targets = [
+  "x86_64-unknown-linux-gnu",
+  "x86_64-unknown-linux-musl",
+  "aarch64-unknown-linux-gnu",
+  "x86_64-apple-darwin",
+  "aarch64-apple-darwin",
+  "x86_64-pc-windows-msvc",
+]
+
+# For PRs, only run planning checks.
+pr-run-mode = "plan"
