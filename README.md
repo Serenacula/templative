@@ -4,10 +4,10 @@ A tiny CLI for instantiating project templates from local directories. Templates
 
 ## Commands
 
--   **init** `TEMPLATE` `[PATH]` — Copy a template into PATH (default: current directory), then run `git init` and an initial commit.
--   **add** `[PATH]` `[--name NAME]` — Register an existing directory as a template (default PATH: current directory; default name: directory name).
--   **list** — Show registered templates and their paths (missing paths shown as “missing”).
--   **remove** `NAME` — Remove a template from the registry only.
+-   `templative init TEMPLATE [PATH]` — Copy a template into PATH (default: current directory), then run `git init` and an initial commit.
+-   `templative add [PATH] [--name NAME]` — Register an existing directory as a template (default PATH: current directory; default name: directory name).
+-   `templative remove NAME` — Remove a template from the registry. Does not delete the actual template.
+-   `templative list` — Show registered templates and their paths (missing paths shown as “missing”).
 
 ## Registry
 
