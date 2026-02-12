@@ -1,6 +1,6 @@
 [package]
 name = "templative"
-version = "1.0.2"
+version = "1.0.1"
 edition = "2021"
 description = "A tiny CLI for instantiating project templates from local directories"
 readme = "README.md"
@@ -9,7 +9,6 @@ repository = "https://github.com/serenacula/templative"
 homepage = "https://github.com/serenacula/templative"
 keywords = ["template", "cli", "scaffold", "project"]
 categories = ["command-line-utilities", "development-tools"]
-publish = false
 
 [profile.release]
 lto = true
