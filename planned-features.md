@@ -1,0 +1,28 @@
+# Planned Features
+
+-   Have a configuration file called config.json in .config/templative/
+    -   For all future flag features, the default can be set here
+-   Add git & no-git flags
+-   Support symlinks
+    -   This should create a new symlink
+-   Add flags symlink & resolvesymlink
+    -   Symlink is default behaviour, creating a new symlink
+        -   If inside the template, keep a local symlink
+        -   Else if outside the template, make it objective
+        -   If the file cannot be found, print non-breaking error!
+    -   resolvesymlink instead creates whatever is on the other end of the symlink
+-   Pull git links as template
+    -   Should still have the same overall git setup of a single commit!
+        -   Probably means deleting the git folder and re-initialising
+    -   Optional caching based on flag.
+        -   Flagging means we need an update command
+        -   We also want to be able to specify specific commits
+-   Template list has headers of TEMPLATE and LOCATION, underlined
+    -   These should be columns
+-   Configure write instructions:
+    -   Strict no overwrite (default): error if directory is not empty
+    -   Write no overwrite: error on file overwrite, allow non-empty directory, commit to pre-existing git if available
+    -   Write skip overwrite: same as above
+    -   Overwrite: Replace overwritten files with new ones
+    -   The above aren't actual names I just haven't thought of good ones
+-   Check user.name and user.email are set, error if not
