@@ -1,0 +1,11 @@
+[workspace]
+# Git-only mode: release based on git tags/changelog, not crates.io registry state.
+git_only = true
+
+# Create git tags and GitHub releases, but do not publish to crates.io.
+git_tag_enable = true
+git_release_enable = true
+publish = false
+
+# Release on pushes to main (manual version bump flow).
+release_always = true
