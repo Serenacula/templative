@@ -1,6 +1,10 @@
-[dist]
+[workspace]
+members = ["."]
+resolver = "2"
+
+[workspace.metadata.dist]
 # Keep this in sync with the cargo-dist version used in CI.
-cargo-dist-version = "0.29.0"
+cargo-dist-version = "0.30.3"
 
 # Generate GitHub CI and release artifacts.
 ci = ["github"]
