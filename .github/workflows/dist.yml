@@ -111,6 +111,12 @@ jobs:
         if: matrix.target == 'aarch64-unknown-linux-gnu'
         run: cargo-binstall --no-confirm cargo-zigbuild
 
+      - name: Install zig for Linux ARM GNU
+        if: matrix.target == 'aarch64-unknown-linux-gnu'
+        uses: mlugg/setup-zig@v1
+        with:
+          version: latest
+
       - name: Build distributables for target
         run: dist build --allow-dirty --artifacts=local --target=${{ matrix.target }}
 
