@@ -108,7 +108,7 @@ jobs:
           tool: cargo-dist
 
       - name: Build distributables for target
-        run: dist build --artifacts=local --target ${{ matrix.target }}
+        run: dist build --artifacts=local --target=${{ matrix.target }}
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
