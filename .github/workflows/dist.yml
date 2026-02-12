@@ -113,9 +113,19 @@ jobs:
 
       - name: Install zig for Linux ARM GNU
         if: matrix.target == 'aarch64-unknown-linux-gnu'
+        continue-on-error: true
         uses: mlugg/setup-zig@v1
         with:
-          version: latest
+          version: 0.14.0
+
+      - name: Fallback install zig via apt for Linux ARM GNU
+        if: matrix.target == 'aarch64-unknown-linux-gnu'
+        run: |
+          if ! command -v zig >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y zig
+          fi
+          zig version
 
       - name: Build distributables for target
         run: dist build --allow-dirty --artifacts=local --target=${{ matrix.target }}

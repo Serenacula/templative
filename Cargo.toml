@@ -1,6 +1,6 @@
 [package]
 name = "templative"
-version = "1.0.1"
+version = "1.0.0"
 edition = "2021"
 description = "A tiny CLI for instantiating project templates from local directories"
 readme = "README.md"
