@@ -1,6 +1,6 @@
 [package]
 name = "templative"
-version = "1.0.2"
+version = "1.0.3"
 edition = "2021"
 description = "A tiny CLI for instantiating project templates from local directories"
 readme = "README.md"
@@ -14,6 +14,9 @@ categories = ["command-line-utilities", "development-tools"]
 lto = true
 codegen-units = 1
 strip = true
+
+[profile.dist]
+inherits = "release"
 
 [dependencies]
 clap = { version = "4", features = ["derive"] }
