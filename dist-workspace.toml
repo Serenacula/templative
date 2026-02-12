@@ -2,7 +2,7 @@
 members = ["cargo:."]
 resolver = "2"
 
-[workspace.metadata.dist]
+[dist]
 # Keep this in sync with the cargo-dist version used in CI.
 cargo-dist-version = "0.30.3"
 
