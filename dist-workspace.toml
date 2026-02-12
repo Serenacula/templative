@@ -1,5 +1,5 @@
 [workspace]
-members = ["."]
+members = ["cargo:."]
 resolver = "2"
 
 [workspace.metadata.dist]
