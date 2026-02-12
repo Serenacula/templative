@@ -38,7 +38,11 @@ impl Registry {
 
     pub fn load() -> Result<Self> {
         let path = Self::registry_path()?;
-        Self::load_from_path(&path)
+        let registry = Self::load_from_path(&path)?;
+        if !path.exists() {
+            registry.save_to_path(&path)?;
+        }
+        Ok(registry)
     }
 
     /// Load registry from a specific path (for tests).
