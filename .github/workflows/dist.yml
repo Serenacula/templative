@@ -107,6 +107,10 @@ jobs:
         with:
           tool: cargo-dist
 
+      - name: Install cargo-zigbuild for Linux ARM GNU
+        if: matrix.target == 'aarch64-unknown-linux-gnu'
+        run: cargo-binstall --no-confirm cargo-zigbuild
+
       - name: Build distributables for target
         run: dist build --allow-dirty --artifacts=local --target=${{ matrix.target }}
 
