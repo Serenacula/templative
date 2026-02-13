@@ -4,7 +4,7 @@
 
 -   Have a configuration file called config.json in .config/templative/
     -   For all future flag features, the default can be set here
-    -   Created if not present, with all defaults already added
+    -   Create if not present, with all defaults already added
 -   Add git & no-git flags
 -   Support symlinks
     -   This should create a new symlink
@@ -65,4 +65,4 @@
     -   Don't allow initialising a template inside itself
     -   If resolvesymlink, check for any copy loops before starting
 
--   Add should fail with error on init for missing template
+-   Fail with error on init for missing template

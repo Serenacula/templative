@@ -22,9 +22,3 @@ When copying a template, the following are always excluded:
 -   `.git/`
 -   `node_modules/`
 -   `.DS_Store`
-
-## Known limitations (v1)
-
--   No remote/git URL templates.
--   No symlink support (symlinks in templates cause an error).
--   Initial commit requires `user.name` and `user.email` to be set in git config.
