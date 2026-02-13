@@ -7,9 +7,9 @@
     -   This should create a new symlink
 -   Add flags symlink & resolvesymlink
     -   Symlink is default behaviour, creating a new symlink
-        -   If inside the template, keep a local symlink
-        -   Else if outside the template, make it objective
-        -   If the file cannot be found, print non-breaking error!
+        -   If inside the template, keep a relative symlink
+        -   Else if outside the template, make it absolute
+        -   If the file cannot be found, print non-breaking warning!
     -   resolvesymlink instead creates whatever is on the other end of the symlink
 -   Pull git links as template
     -   Should still have the same overall git setup of a single commit!
@@ -22,7 +22,14 @@
 -   Configure write instructions:
     -   Strict no overwrite (default): error if directory is not empty
     -   Write no overwrite: error on file overwrite, allow non-empty directory, commit to pre-existing git if available
-    -   Write skip overwrite: same as above
+    -   Write skip overwrite: same as above, but skips files that would overwrite not error
     -   Overwrite: Replace overwritten files with new ones
-    -   The above aren't actual names I just haven't thought of good ones
 -   Check user.name and user.email are set, error if not
+-   Yellow warning and `(no git)` if git not initialised in template
+-   Yellow warning and `(update available)` if git initialised and template is not up to date
+-   Yellow warning and `(empty template)` if directory empty except from git
+-   Blue colour and `(single file)` for links pointing at single files
+-   Blue colour and `(symlink)` for links pointing to a symlink
+-   If `template list` and no templates, tell user how to add one
+-   Forbid recursion
+-   Templates can optionally run a pre-init and post-init command. These are configured in the config directory
