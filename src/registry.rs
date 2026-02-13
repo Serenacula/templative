@@ -26,7 +26,7 @@ impl Registry {
     }
 
     pub fn config_dir() -> Result<std::path::PathBuf> {
-        let project_dirs = ProjectDirs::from("dev", "templative", "templative")
+        let project_dirs = ProjectDirs::from("com", "fayleemb", "templative")
             .context("could not determine config directory")?;
         Ok(project_dirs.config_dir().to_path_buf())
     }
@@ -70,8 +70,8 @@ impl Registry {
         let parent = path.parent().context("registry path has no parent")?;
         fs::create_dir_all(parent)
             .with_context(|| format!("failed to create config dir: {}", parent.display()))?;
-        let contents = serde_json::to_string_pretty(self)
-            .context("failed to serialize registry")?;
+        let contents =
+            serde_json::to_string_pretty(self).context("failed to serialize registry")?;
         let temp_path = path.with_extension("tmp");
         fs::write(&temp_path, contents)
             .with_context(|| format!("failed to write registry: {}", temp_path.display()))?;
@@ -100,7 +100,9 @@ impl Registry {
     }
 
     pub fn get_path(&self, name: &str) -> Option<std::path::PathBuf> {
-        self.templates.get(name).map(|string| Path::new(string).to_path_buf())
+        self.templates
+            .get(name)
+            .map(|string| Path::new(string).to_path_buf())
     }
 
     pub fn template_names_sorted(&self) -> Vec<String> {
@@ -132,7 +134,9 @@ mod tests {
         let temp = tempfile::tempdir().unwrap();
         let path = temp.path().join("templates.json");
         let mut registry = Registry::new();
-        registry.templates.insert("foo".into(), "/path/to/foo".into());
+        registry
+            .templates
+            .insert("foo".into(), "/path/to/foo".into());
         registry.save_to_path(&path).unwrap();
         let loaded = Registry::load_from_path(&path).unwrap();
         assert_eq!(loaded.templates.get("foo").unwrap(), "/path/to/foo");
@@ -142,11 +146,7 @@ mod tests {
     fn rejects_version_mismatch() {
         let temp = tempfile::tempdir().unwrap();
         let path = temp.path().join("templates.json");
-        std::fs::write(
-            &path,
-            r#"{"version": 99, "templates": {}}"#,
-        )
-        .unwrap();
+        std::fs::write(&path, r#"{"version": 99, "templates": {}}"#).unwrap();
         let result = Registry::load_from_path(&path);
         assert!(result.is_err());
         assert!(matches!(
