@@ -3,8 +3,10 @@ use std::fs;
 use std::path::Path;
 
 use anyhow::{Context, Result};
-use directories::ProjectDirs;
 use serde::{Deserialize, Serialize};
+
+#[cfg(not(unix))]
+use directories::ProjectDirs;
 
 use crate::errors::TemplativeError;
 
@@ -26,9 +28,28 @@ impl Registry {
     }
 
     pub fn config_dir() -> Result<std::path::PathBuf> {
-        let project_dirs = ProjectDirs::from("com", "fayleemb", "templative")
-            .context("could not determine config directory")?;
-        Ok(project_dirs.config_dir().to_path_buf())
+        #[cfg(unix)]
+        {
+            let base = std::env::var_os("XDG_CONFIG_HOME")
+                .map(std::path::PathBuf::from)
+                .or_else(|| {
+                    std::env::var_os("HOME")
+                        .map(|home| std::path::PathBuf::from(home).join(".config"))
+                });
+            match base {
+                Some(path) => Ok(path.join("templative")),
+                None => Err(anyhow::anyhow!(
+                    "could not determine config directory (set HOME or XDG_CONFIG_HOME)"
+                )),
+            }
+        }
+
+        #[cfg(not(unix))]
+        {
+            let project_dirs = ProjectDirs::from("com", "fayleemb", "templative")
+                .context("could not determine config directory")?;
+            Ok(project_dirs.config_dir().to_path_buf())
+        }
     }
 
     pub fn registry_path() -> Result<std::path::PathBuf> {

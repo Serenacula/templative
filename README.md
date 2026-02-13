@@ -11,8 +11,9 @@ A tiny CLI for instantiating project templates from local directories. Templates
 
 ## Registry
 
--   Location: `~/.config/templative/templates.json` (or platform config equivalent via `directories`).
--   Contents: `version: 1` and a map of template names to absolute paths.
+-   Location:
+    -   Linux / macOS: `~/.config/templative/templates.json`
+    -   Windows: `%APPDATA%\templative\templative\templates.json`
 
 ## Exclusions
 
