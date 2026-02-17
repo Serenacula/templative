@@ -9,9 +9,9 @@ A tiny CLI for instantiating project templates from local directories. Templates
 -   `templative remove NAME` — Remove a template from the registry. Does not delete the actual template.
 -   `templative list` — Show registered templates and their paths (missing paths shown as “missing”).
 
-## Registry
+## Config
 
--   Location:
+-   Registry location:
     -   Linux / macOS: `~/.config/templative/templates.json`
     -   Windows: `%APPDATA%\templative\templative\templates.json`
 

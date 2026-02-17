@@ -1,8 +1,8 @@
 [package]
 name = "templative"
-version = "1.0.1"
+version = "0.0.1"
 edition = "2021"
-description = "A tiny CLI for instantiating project templates from local directories"
+description = "A tiny CLI for managing project templates"
 readme = "README.md"
 license = "MIT"
 repository = "https://github.com/serenacula/templative"
