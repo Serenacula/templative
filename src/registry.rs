@@ -23,6 +23,12 @@ pub struct Template {
     pub pre_init: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub post_init: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub git_ref: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub no_cache: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub fresh: Option<bool>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -156,6 +162,9 @@ mod tests {
             commit: None,
             pre_init: None,
             post_init: None,
+            git_ref: None,
+            no_cache: None,
+            fresh: None,
         });
         registry.save_to_path(&path).unwrap();
         let loaded = Registry::load_from_path(&path).unwrap();
@@ -188,6 +197,9 @@ mod tests {
             commit: None,
             pre_init: None,
             post_init: None,
+            git_ref: None,
+            no_cache: None,
+            fresh: None,
         });
         registry.save_to_path(&path).unwrap();
         let contents = std::fs::read_to_string(&path).unwrap();

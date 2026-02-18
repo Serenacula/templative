@@ -27,6 +27,6 @@ walkdir = "2"
 owo-colors = "4"
 anyhow = "1"
 thiserror = "1"
+tempfile = "3"
 
 [dev-dependencies]
-tempfile = "3"

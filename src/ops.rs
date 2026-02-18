@@ -3,25 +3,48 @@ use std::path::PathBuf;
 use anyhow::{Context, Result};
 use owo_colors::OwoColorize;
 
-use crate::config::Config;
+use crate::config::{Config, UpdateOnInit};
 use crate::errors::TemplativeError;
 use crate::fs_copy;
 use crate::git;
+use crate::git_cache;
 use crate::registry::{Registry, Template};
 use crate::resolved::ResolvedOptions;
 use crate::utilities;
 
-pub fn cmd_add(path: PathBuf, name: Option<String>, description: Option<String>, git: Option<bool>) -> Result<()> {
-    let canonical = path
-        .canonicalize()
-        .with_context(|| format!("path not found or not absolute: {}", path.display()))?;
-    let template_name = name.unwrap_or_else(|| {
-        canonical
-            .file_name()
-            .map(|os| os.to_string_lossy().into_owned())
-            .unwrap_or_else(|| "template".to_string())
-    });
-    let location = canonical.to_string_lossy().into_owned();
+pub fn cmd_add(
+    path: String,
+    name: Option<String>,
+    description: Option<String>,
+    git: Option<bool>,
+    git_ref: Option<String>,
+    no_cache: Option<bool>,
+    fresh: Option<bool>,
+) -> Result<()> {
+    let (location, template_name) = if utilities::is_git_url(&path) {
+        git_cache::ensure_cached(&path)?;
+        let name = name.unwrap_or_else(|| {
+            path.trim_end_matches('/')
+                .rsplit('/')
+                .next()
+                .unwrap_or("template")
+                .trim_end_matches(".git")
+                .to_string()
+        });
+        (path, name)
+    } else {
+        let canonical = PathBuf::from(&path)
+            .canonicalize()
+            .with_context(|| format!("path not found or not absolute: {}", path))?;
+        let name = name.unwrap_or_else(|| {
+            canonical
+                .file_name()
+                .map(|os| os.to_string_lossy().into_owned())
+                .unwrap_or_else(|| "template".to_string())
+        });
+        (canonical.to_string_lossy().into_owned(), name)
+    };
+
     let template = Template {
         name: template_name.clone(),
         location: location.clone(),
@@ -30,6 +53,9 @@ pub fn cmd_add(path: PathBuf, name: Option<String>, description: Option<String>,
         commit: None,
         pre_init: None,
         post_init: None,
+        git_ref,
+        no_cache,
+        fresh,
     };
     let mut registry = Registry::load()?;
     registry.add(template)?;
@@ -53,12 +79,16 @@ pub fn cmd_list() -> Result<()> {
         return Ok(());
     }
     for template in registry.templates_sorted() {
-        let path_buf = PathBuf::from(&template.location);
-        if path_buf.exists() {
+        if utilities::is_git_url(&template.location) {
             println!("{}  {}", template.name, template.location);
         } else {
-            let display = format!("{}  {} (missing)", template.name, template.location);
-            println!("{}", display.strikethrough().red());
+            let path_buf = PathBuf::from(&template.location);
+            if path_buf.exists() {
+                println!("{}  {}", template.name, template.location);
+            } else {
+                let display = format!("{}  {} (missing)", template.name, template.location);
+                println!("{}", display.strikethrough().red());
+            }
         }
     }
     Ok(())
@@ -73,9 +103,13 @@ pub fn cmd_change(
     commit: Option<String>,
     pre_init: Option<String>,
     post_init: Option<String>,
+    git_ref: Option<String>,
+    no_cache: Option<Option<bool>>,
+    fresh: Option<Option<bool>>,
 ) -> Result<()> {
     if name.is_none() && description.is_none() && location.is_none()
         && git.is_none() && commit.is_none() && pre_init.is_none() && post_init.is_none()
+        && git_ref.is_none() && no_cache.is_none() && fresh.is_none()
     {
         anyhow::bail!("no changes specified");
     }
@@ -104,13 +138,22 @@ pub fn cmd_change(
     if let Some(new_commit) = commit { template.commit = Some(new_commit); }
     if let Some(new_pre_init) = pre_init { template.pre_init = Some(new_pre_init); }
     if let Some(new_post_init) = post_init { template.post_init = Some(new_post_init); }
+    if let Some(new_git_ref) = git_ref { template.git_ref = Some(new_git_ref); }
+    if let Some(new_no_cache) = no_cache { template.no_cache = new_no_cache; }
+    if let Some(new_fresh) = fresh { template.fresh = new_fresh; }
 
     registry.save()?;
     println!("updated {}", template_name);
     Ok(())
 }
 
-pub fn cmd_init(config: Config, template_name: String, target_path: PathBuf, git_flag: Option<bool>) -> Result<()> {
+pub fn cmd_init(
+    config: Config,
+    template_name: String,
+    target_path: PathBuf,
+    git_flag: Option<bool>,
+    fresh_flag: Option<bool>,
+) -> Result<()> {
     let registry = Registry::load()?;
     let template = registry
         .get(&template_name)
@@ -119,16 +162,50 @@ pub fn cmd_init(config: Config, template_name: String, target_path: PathBuf, git
         })
         .with_context(|| "run 'templative list' to see available templates")?;
 
-    let resolved = ResolvedOptions::build(&config, template, git_flag);
-    let template_path = PathBuf::from(&template.location);
+    let resolved = ResolvedOptions::build(&config, template, git_flag, fresh_flag);
+    let location = template.location.clone();
+    let location_is_url = utilities::is_git_url(&location);
 
-    if !template_path.exists() {
-        return Err(TemplativeError::TemplatePathMissing {
-            path: template_path.clone(),
+    // Determine template source path (and keep tempdir alive if used)
+    let _tempdir: Option<tempfile::TempDir>;
+    let template_path: PathBuf;
+
+    if location_is_url {
+        if resolved.no_cache {
+            let td = tempfile::tempdir().context("failed to create temp dir")?;
+            git::clone_repo(&location, td.path())?;
+            if let Some(ref git_ref) = resolved.git_ref {
+                git::checkout_ref(td.path(), git_ref)?;
+            }
+            template_path = td.path().to_path_buf();
+            _tempdir = Some(td);
+        } else {
+            let cache_path = git_cache::ensure_cached(&location)?;
+            let should_update = resolved.git_ref.is_none()
+                && resolved.update_on_init != UpdateOnInit::Never;
+            if should_update {
+                let _ = git_cache::update_cache(&cache_path);
+            }
+            if let Some(ref git_ref) = resolved.git_ref {
+                git::checkout_ref(&cache_path, git_ref)?;
+            }
+            template_path = cache_path;
+            _tempdir = None;
         }
-        .into());
+    } else {
+        template_path = PathBuf::from(&location);
+        _tempdir = None;
+        let git_dir = template_path.join(".git");
+        if resolved.git_ref.is_none()
+            && resolved.update_on_init == UpdateOnInit::Always
+            && git_dir.exists()
+        {
+            let _ = git::fetch_origin(&template_path);
+            let _ = git::reset_hard_origin(&template_path);
+        }
     }
-    if !template_path.is_dir() {
+
+    if !template_path.exists() || !template_path.is_dir() {
         return Err(TemplativeError::TemplatePathMissing {
             path: template_path.clone(),
         }
@@ -158,9 +235,16 @@ pub fn cmd_init(config: Config, template_name: String, target_path: PathBuf, git
         return Err(TemplativeError::TargetNotEmpty.into());
     }
 
-    fs_copy::copy_template(&template_path, &target_canonical)?;
-    if resolved.git {
-        git::init_and_commit(&target_canonical, &template_name)?;
+    if resolved.fresh {
+        fs_copy::copy_template(&template_path, &target_canonical)?;
+        if resolved.git {
+            git::init_and_commit(&target_canonical, &template_name)?;
+        }
+    } else {
+        git::clone_local(&template_path, &target_canonical)?;
+        if location_is_url {
+            git::set_remote_url(&target_canonical, &location)?;
+        }
     }
 
     if let Some(ref cmd) = resolved.post_init {

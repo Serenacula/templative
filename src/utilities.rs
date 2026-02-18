@@ -47,6 +47,26 @@ pub fn run_hook(command: &str, working_dir: &std::path::Path) -> Result<()> {
     Ok(())
 }
 
+pub fn is_git_url(s: &str) -> bool {
+    s.starts_with("https://")
+        || s.starts_with("http://")
+        || s.starts_with("git@")
+        || s.starts_with("git://")
+}
+
+fn fnv1a_hash(s: &str) -> u64 {
+    let mut hash: u64 = 14695981039346656037;
+    for byte in s.bytes() {
+        hash ^= byte as u64;
+        hash = hash.wrapping_mul(1099511628211);
+    }
+    hash
+}
+
+pub fn cache_path_for_url(url: &str) -> Result<PathBuf> {
+    Ok(config_dir()?.join("cache").join(format!("{:016x}", fnv1a_hash(url))))
+}
+
 pub fn is_dir_empty(path: &std::path::Path) -> Result<bool> {
     let mut entries = std::fs::read_dir(path)
         .with_context(|| format!("failed to read directory: {}", path.display()))?;

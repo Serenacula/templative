@@ -14,16 +14,40 @@ fn default_true() -> bool {
     true
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "kebab-case")]
+pub enum UpdateOnInit {
+    Always,
+    OnlyUrl,
+    Never,
+}
+
+fn default_update_on_init() -> UpdateOnInit {
+    UpdateOnInit::OnlyUrl
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Config {
     pub version: u32,
     #[serde(default = "default_true")]
     pub git: bool,
+    #[serde(default = "default_true")]
+    pub fresh: bool,
+    #[serde(default = "default_update_on_init")]
+    pub update_on_init: UpdateOnInit,
+    #[serde(default)]
+    pub no_cache: bool,
 }
 
 impl Config {
     pub fn new() -> Self {
-        Self { version: CONFIG_VERSION, git: true }
+        Self {
+            version: CONFIG_VERSION,
+            git: true,
+            fresh: true,
+            update_on_init: UpdateOnInit::OnlyUrl,
+            no_cache: false,
+        }
     }
 
     pub fn load() -> Result<Self> {
