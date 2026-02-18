@@ -13,23 +13,24 @@ mod registry;
 mod resolved;
 mod utilities;
 
+use config::GitMode;
+
+/// `--git fresh|preserve|no-git` for init and add
 #[derive(clap::ValueEnum, Clone)]
-enum GitOverride {
-    #[value(name = "true")]
-    Yes,
-    #[value(name = "false")]
-    No,
-    #[value(name = "none")]
-    Unset,
+enum GitModeArg {
+    Fresh,
+    Preserve,
+    #[value(name = "no-git")]
+    NoGit,
 }
 
+/// `--git fresh|preserve|no-git|unset` for change
 #[derive(clap::ValueEnum, Clone)]
-enum FreshOverride {
-    #[value(name = "true")]
-    Yes,
-    #[value(name = "false")]
-    No,
-    #[value(name = "none")]
+enum GitModeChangeArg {
+    Fresh,
+    Preserve,
+    #[value(name = "no-git")]
+    NoGit,
     Unset,
 }
 
@@ -56,25 +57,16 @@ struct Cli {
 
 #[derive(clap::Subcommand)]
 enum Command {
-    /// Copy template into PATH and run git init + initial commit
+    /// Copy template into PATH
     Init {
         /// Template name (as registered with add)
         template_name: String,
         /// Target path (default: current directory)
         #[arg(default_value = ".")]
         target_path: PathBuf,
-        /// Initialise a git repository (overrides template and config)
-        #[arg(long = "git", overrides_with = "no_git")]
-        git: bool,
-        /// Skip git initialisation (overrides template and config)
-        #[arg(long = "no-git", overrides_with = "git")]
-        no_git: bool,
-        /// Strip git history on copy (overrides template and config)
-        #[arg(long = "fresh", overrides_with = "no_fresh")]
-        fresh: bool,
-        /// Preserve git history via local clone (overrides template and config)
-        #[arg(long = "no-fresh", overrides_with = "fresh")]
-        no_fresh: bool,
+        /// Git mode: fresh (copy + new history), preserve (clone), no-git (copy only)
+        #[arg(long)]
+        git: Option<GitModeArg>,
     },
     /// Register a directory or git URL as a template
     Add {
@@ -87,24 +79,15 @@ enum Command {
         /// Optional description
         #[arg(short, long)]
         description: Option<String>,
-        /// Set git override for this template
-        #[arg(long = "git", overrides_with = "no_git")]
-        git: bool,
-        /// Set no-git override for this template
-        #[arg(long = "no-git", overrides_with = "git")]
-        no_git: bool,
+        /// Git mode: fresh (copy + new history), preserve (clone), no-git (copy only)
+        #[arg(long)]
+        git: Option<GitModeArg>,
         /// Pin to a specific git ref (branch, tag, or SHA)
         #[arg(long = "git-ref")]
         git_ref: Option<String>,
         /// Skip cache; clone fresh on each init
         #[arg(long = "no-cache")]
         no_cache: bool,
-        /// Strip git history on init (overrides config)
-        #[arg(long = "fresh", overrides_with = "no_fresh")]
-        fresh: bool,
-        /// Preserve git history on init (overrides config)
-        #[arg(long = "no-fresh", overrides_with = "fresh")]
-        no_fresh: bool,
     },
     /// Remove a template from the registry
     Remove {
@@ -124,9 +107,9 @@ enum Command {
         /// New location
         #[arg(long)]
         location: Option<PathBuf>,
-        /// Set git behaviour for this template (true/false/none)
+        /// Git mode: fresh, preserve, no-git, or unset to remove override
         #[arg(long)]
-        git: Option<GitOverride>,
+        git: Option<GitModeChangeArg>,
         /// Pin to a specific commit
         #[arg(long)]
         commit: Option<String>,
@@ -142,12 +125,17 @@ enum Command {
         /// Set no-cache behaviour (true/false/none)
         #[arg(long = "no-cache")]
         no_cache: Option<NoCacheOverride>,
-        /// Set fresh behaviour (true/false/none)
-        #[arg(long = "fresh")]
-        fresh: Option<FreshOverride>,
     },
     /// List registered templates and their paths
     List,
+}
+
+fn git_mode_arg_to_mode(arg: GitModeArg) -> GitMode {
+    match arg {
+        GitModeArg::Fresh => GitMode::Fresh,
+        GitModeArg::Preserve => GitMode::Preserve,
+        GitModeArg::NoGit => GitMode::NoGit,
+    }
 }
 
 fn run() -> Result<()> {
@@ -158,53 +146,21 @@ fn run() -> Result<()> {
             template_name,
             target_path,
             git,
-            no_git,
-            fresh,
-            no_fresh,
         } => {
-            let git_flag = if git {
-                Some(true)
-            } else if no_git {
-                Some(false)
-            } else {
-                None
-            };
-            let fresh_flag = if fresh {
-                Some(true)
-            } else if no_fresh {
-                Some(false)
-            } else {
-                None
-            };
-            ops::cmd_init(config, template_name, target_path, git_flag, fresh_flag)
+            let git_flag = git.map(git_mode_arg_to_mode);
+            ops::cmd_init(config, template_name, target_path, git_flag)
         }
         Command::Add {
             path,
             name,
             description,
             git,
-            no_git,
             git_ref,
             no_cache,
-            fresh,
-            no_fresh,
         } => {
-            let git_flag = if git {
-                Some(true)
-            } else if no_git {
-                Some(false)
-            } else {
-                None
-            };
-            let fresh_flag = if fresh {
-                Some(true)
-            } else if no_fresh {
-                Some(false)
-            } else {
-                None
-            };
+            let git_flag = git.map(git_mode_arg_to_mode);
             let no_cache_flag = if no_cache { Some(true) } else { None };
-            ops::cmd_add(path, name, description, git_flag, git_ref, no_cache_flag, fresh_flag)
+            ops::cmd_add(path, name, description, git_flag, git_ref, no_cache_flag)
         }
         Command::Remove { template_name } => ops::cmd_remove(template_name),
         Command::Change {
@@ -218,22 +174,17 @@ fn run() -> Result<()> {
             post_init,
             git_ref,
             no_cache,
-            fresh,
         } => {
             let git_override = git.map(|g| match g {
-                GitOverride::Yes => Some(true),
-                GitOverride::No => Some(false),
-                GitOverride::Unset => None,
+                GitModeChangeArg::Fresh => Some(GitMode::Fresh),
+                GitModeChangeArg::Preserve => Some(GitMode::Preserve),
+                GitModeChangeArg::NoGit => Some(GitMode::NoGit),
+                GitModeChangeArg::Unset => None,
             });
             let no_cache_override = no_cache.map(|v| match v {
                 NoCacheOverride::Yes => Some(true),
                 NoCacheOverride::No => Some(false),
                 NoCacheOverride::Unset => None,
-            });
-            let fresh_override = fresh.map(|v| match v {
-                FreshOverride::Yes => Some(true),
-                FreshOverride::No => Some(false),
-                FreshOverride::Unset => None,
             });
             ops::cmd_change(
                 template_name,
@@ -246,7 +197,6 @@ fn run() -> Result<()> {
                 post_init,
                 git_ref,
                 no_cache_override,
-                fresh_override,
             )
         }
         Command::List => ops::cmd_list(),

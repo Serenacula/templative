@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use anyhow::{Context, Result};
 use owo_colors::OwoColorize;
 
-use crate::config::{Config, UpdateOnInit};
+use crate::config::{Config, GitMode, UpdateOnInit};
 use crate::errors::TemplativeError;
 use crate::fs_copy;
 use crate::git;
@@ -16,10 +16,9 @@ pub fn cmd_add(
     path: String,
     name: Option<String>,
     description: Option<String>,
-    git: Option<bool>,
+    git: Option<GitMode>,
     git_ref: Option<String>,
     no_cache: Option<bool>,
-    fresh: Option<bool>,
 ) -> Result<()> {
     let (location, template_name) = if utilities::is_git_url(&path) {
         git_cache::ensure_cached(&path)?;
@@ -55,7 +54,6 @@ pub fn cmd_add(
         post_init: None,
         git_ref,
         no_cache,
-        fresh,
     };
     let mut registry = Registry::load()?;
     registry.add(template)?;
@@ -99,17 +97,16 @@ pub fn cmd_change(
     name: Option<String>,
     description: Option<String>,
     location: Option<PathBuf>,
-    git: Option<Option<bool>>,
+    git: Option<Option<GitMode>>,
     commit: Option<String>,
     pre_init: Option<String>,
     post_init: Option<String>,
     git_ref: Option<String>,
     no_cache: Option<Option<bool>>,
-    fresh: Option<Option<bool>>,
 ) -> Result<()> {
     if name.is_none() && description.is_none() && location.is_none()
         && git.is_none() && commit.is_none() && pre_init.is_none() && post_init.is_none()
-        && git_ref.is_none() && no_cache.is_none() && fresh.is_none()
+        && git_ref.is_none() && no_cache.is_none()
     {
         anyhow::bail!("no changes specified");
     }
@@ -140,7 +137,6 @@ pub fn cmd_change(
     if let Some(new_post_init) = post_init { template.post_init = Some(new_post_init); }
     if let Some(new_git_ref) = git_ref { template.git_ref = Some(new_git_ref); }
     if let Some(new_no_cache) = no_cache { template.no_cache = new_no_cache; }
-    if let Some(new_fresh) = fresh { template.fresh = new_fresh; }
 
     registry.save()?;
     println!("updated {}", template_name);
@@ -151,8 +147,7 @@ pub fn cmd_init(
     config: Config,
     template_name: String,
     target_path: PathBuf,
-    git_flag: Option<bool>,
-    fresh_flag: Option<bool>,
+    git_flag: Option<GitMode>,
 ) -> Result<()> {
     let registry = Registry::load()?;
     let template = registry
@@ -162,7 +157,7 @@ pub fn cmd_init(
         })
         .with_context(|| "run 'templative list' to see available templates")?;
 
-    let resolved = ResolvedOptions::build(&config, template, git_flag, fresh_flag);
+    let resolved = ResolvedOptions::build(&config, template, git_flag);
     let location = template.location.clone();
     let location_is_url = utilities::is_git_url(&location);
 
@@ -235,15 +230,19 @@ pub fn cmd_init(
         return Err(TemplativeError::TargetNotEmpty.into());
     }
 
-    if resolved.fresh {
-        fs_copy::copy_template(&template_path, &target_canonical)?;
-        if resolved.git {
+    match resolved.git {
+        GitMode::Fresh => {
+            fs_copy::copy_template(&template_path, &target_canonical)?;
             git::init_and_commit(&target_canonical, &template_name)?;
         }
-    } else {
-        git::clone_local(&template_path, &target_canonical)?;
-        if location_is_url {
-            git::set_remote_url(&target_canonical, &location)?;
+        GitMode::Preserve => {
+            git::clone_local(&template_path, &target_canonical)?;
+            if location_is_url {
+                git::set_remote_url(&target_canonical, &location)?;
+            }
+        }
+        GitMode::NoGit => {
+            fs_copy::copy_template(&template_path, &target_canonical)?;
         }
     }
 

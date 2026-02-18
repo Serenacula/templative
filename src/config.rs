@@ -10,8 +10,16 @@ use crate::utilities;
 const CONFIG_VERSION: u32 = 1;
 const CONFIG_FILENAME: &str = "config.json";
 
-fn default_true() -> bool {
-    true
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "kebab-case")]
+pub enum GitMode {
+    Fresh,
+    Preserve,
+    NoGit,
+}
+
+fn default_git_mode() -> GitMode {
+    GitMode::Fresh
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -29,10 +37,8 @@ fn default_update_on_init() -> UpdateOnInit {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Config {
     pub version: u32,
-    #[serde(default = "default_true")]
-    pub git: bool,
-    #[serde(default = "default_true")]
-    pub fresh: bool,
+    #[serde(default = "default_git_mode")]
+    pub git: GitMode,
     #[serde(default = "default_update_on_init")]
     pub update_on_init: UpdateOnInit,
     #[serde(default)]
@@ -43,8 +49,7 @@ impl Config {
     pub fn new() -> Self {
         Self {
             version: CONFIG_VERSION,
-            git: true,
-            fresh: true,
+            git: GitMode::Fresh,
             update_on_init: UpdateOnInit::OnlyUrl,
             no_cache: false,
         }
@@ -149,45 +154,46 @@ mod tests {
     }
 
     #[test]
-    fn old_config_without_new_fields_uses_defaults() {
+    fn old_config_without_git_field_defaults_to_fresh() {
         let temp = tempfile::tempdir().unwrap();
         let path = temp.path().join("config.json");
-        std::fs::write(&path, r#"{"version": 1, "git": true}"#).unwrap();
+        std::fs::write(&path, r#"{"version": 1}"#).unwrap();
         let config = Config::load_from_path(&path).unwrap();
-        assert!(config.fresh);
+        assert_eq!(config.git, GitMode::Fresh);
         assert_eq!(config.update_on_init, UpdateOnInit::OnlyUrl);
         assert!(!config.no_cache);
     }
 
     #[test]
-    fn update_on_init_serializes_kebab_case() {
+    fn git_mode_serializes_kebab_case() {
         let config = Config::new();
         let json = serde_json::to_string(&config).unwrap();
+        assert!(json.contains("fresh"));
         assert!(json.contains("only-url"));
     }
 
     #[test]
-    fn update_on_init_roundtrip() {
+    fn git_mode_roundtrip() {
         let temp = tempfile::tempdir().unwrap();
         let path = temp.path().join("config.json");
         let config = Config {
             version: 1,
-            git: true,
-            fresh: false,
+            git: GitMode::Preserve,
             update_on_init: UpdateOnInit::Always,
             no_cache: true,
         };
         config.save_to_path(&path).unwrap();
         let loaded = Config::load_from_path(&path).unwrap();
-        assert!(!loaded.fresh);
+        assert_eq!(loaded.git, GitMode::Preserve);
         assert_eq!(loaded.update_on_init, UpdateOnInit::Always);
         assert!(loaded.no_cache);
     }
 
     #[test]
-    fn update_on_init_never_roundtrip() {
-        let json = r#"{"version":1,"git":true,"fresh":true,"update_on_init":"never","no_cache":false}"#;
+    fn git_mode_no_git_roundtrip() {
+        let json = r#"{"version":1,"git":"no-git","update_on_init":"never","no_cache":false}"#;
         let config: Config = serde_json::from_str(json).unwrap();
+        assert_eq!(config.git, GitMode::NoGit);
         assert_eq!(config.update_on_init, UpdateOnInit::Never);
     }
 }

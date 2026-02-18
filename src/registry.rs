@@ -4,6 +4,7 @@ use std::path::{Path, PathBuf};
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 
+use crate::config::GitMode;
 use crate::errors::TemplativeError;
 
 const REGISTRY_VERSION: u32 = 2;
@@ -14,7 +15,7 @@ pub struct Template {
     pub name: String,
     pub location: String,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub git: Option<bool>,
+    pub git: Option<GitMode>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -27,8 +28,6 @@ pub struct Template {
     pub git_ref: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub no_cache: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub fresh: Option<bool>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -140,6 +139,20 @@ impl Default for Registry {
 mod tests {
     use super::*;
 
+    fn make_template(git: Option<GitMode>) -> Template {
+        Template {
+            name: "foo".into(),
+            location: "/path/to/foo".into(),
+            git,
+            description: None,
+            commit: None,
+            pre_init: None,
+            post_init: None,
+            git_ref: None,
+            no_cache: None,
+        }
+    }
+
     #[test]
     fn load_missing_file_returns_empty_registry() {
         let temp = tempfile::tempdir().unwrap();
@@ -154,18 +167,7 @@ mod tests {
         let temp = tempfile::tempdir().unwrap();
         let path = temp.path().join("templates.json");
         let mut registry = Registry::new();
-        registry.templates.push(Template {
-            name: "foo".into(),
-            location: "/path/to/foo".into(),
-            git: None,
-            description: None,
-            commit: None,
-            pre_init: None,
-            post_init: None,
-            git_ref: None,
-            no_cache: None,
-            fresh: None,
-        });
+        registry.templates.push(make_template(None));
         registry.save_to_path(&path).unwrap();
         let loaded = Registry::load_from_path(&path).unwrap();
         assert_eq!(loaded.templates[0].location, "/path/to/foo");
@@ -185,7 +187,7 @@ mod tests {
     }
 
     #[test]
-    fn old_registry_without_new_fields_deserializes_cleanly() {
+    fn old_registry_without_git_field_deserializes_cleanly() {
         let temp = tempfile::tempdir().unwrap();
         let path = temp.path().join("templates.json");
         std::fs::write(
@@ -195,34 +197,39 @@ mod tests {
         .unwrap();
         let registry = Registry::load_from_path(&path).unwrap();
         let t = &registry.templates[0];
+        assert!(t.git.is_none());
         assert!(t.git_ref.is_none());
         assert!(t.no_cache.is_none());
-        assert!(t.fresh.is_none());
     }
 
     #[test]
-    fn new_fields_serialize_when_set() {
+    fn git_mode_fields_serialize_when_set() {
         let temp = tempfile::tempdir().unwrap();
         let path = temp.path().join("templates.json");
         let mut registry = Registry::new();
         registry.templates.push(Template {
-            name: "foo".into(),
-            location: "/path".into(),
-            git: None,
-            description: None,
-            commit: None,
-            pre_init: None,
-            post_init: None,
+            git: Some(GitMode::Preserve),
             git_ref: Some("main".into()),
             no_cache: Some(true),
-            fresh: Some(false),
+            ..make_template(None)
         });
         registry.save_to_path(&path).unwrap();
         let contents = std::fs::read_to_string(&path).unwrap();
+        assert!(contents.contains("preserve"));
         assert!(contents.contains("git_ref"));
         assert!(contents.contains("main"));
         assert!(contents.contains("no_cache"));
-        assert!(contents.contains("fresh"));
+    }
+
+    #[test]
+    fn git_mode_roundtrip() {
+        let temp = tempfile::tempdir().unwrap();
+        let path = temp.path().join("templates.json");
+        let mut registry = Registry::new();
+        registry.templates.push(make_template(Some(GitMode::NoGit)));
+        registry.save_to_path(&path).unwrap();
+        let loaded = Registry::load_from_path(&path).unwrap();
+        assert_eq!(loaded.templates[0].git, Some(GitMode::NoGit));
     }
 
     #[test]
@@ -230,18 +237,7 @@ mod tests {
         let temp = tempfile::tempdir().unwrap();
         let path = temp.path().join("templates.json");
         let mut registry = Registry::new();
-        registry.templates.push(Template {
-            name: "foo".into(),
-            location: "/path".into(),
-            git: None,
-            description: None,
-            commit: None,
-            pre_init: None,
-            post_init: None,
-            git_ref: None,
-            no_cache: None,
-            fresh: None,
-        });
+        registry.templates.push(make_template(None));
         registry.save_to_path(&path).unwrap();
         let contents = std::fs::read_to_string(&path).unwrap();
         assert!(!contents.contains("null"));
