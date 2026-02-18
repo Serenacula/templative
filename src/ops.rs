@@ -11,7 +11,7 @@ use crate::registry::{Registry, Template};
 use crate::resolved::ResolvedOptions;
 use crate::utilities;
 
-pub fn cmd_add(_config: Config, path: PathBuf, name: Option<String>, description: Option<String>, git: Option<bool>) -> Result<()> {
+pub fn cmd_add(path: PathBuf, name: Option<String>, description: Option<String>, git: Option<bool>) -> Result<()> {
     let canonical = path
         .canonicalize()
         .with_context(|| format!("path not found or not absolute: {}", path.display()))?;
@@ -38,7 +38,7 @@ pub fn cmd_add(_config: Config, path: PathBuf, name: Option<String>, description
     Ok(())
 }
 
-pub fn cmd_remove(_config: Config, template_name: String) -> Result<()> {
+pub fn cmd_remove(template_name: String) -> Result<()> {
     let mut registry = Registry::load()?;
     registry.remove(&template_name)?;
     registry.save()?;
@@ -46,7 +46,7 @@ pub fn cmd_remove(_config: Config, template_name: String) -> Result<()> {
     Ok(())
 }
 
-pub fn cmd_list(_config: Config) -> Result<()> {
+pub fn cmd_list() -> Result<()> {
     let registry = Registry::load()?;
     if registry.templates.is_empty() {
         println!("no templates available: use `templative add <FOLDER>` to add a template");
@@ -65,7 +65,6 @@ pub fn cmd_list(_config: Config) -> Result<()> {
 }
 
 pub fn cmd_change(
-    _config: Config,
     template_name: String,
     name: Option<String>,
     description: Option<String>,
@@ -111,7 +110,7 @@ pub fn cmd_change(
     Ok(())
 }
 
-pub fn cmd_init(_config: Config, template_name: String, target_path: PathBuf, git_flag: Option<bool>) -> Result<()> {
+pub fn cmd_init(config: Config, template_name: String, target_path: PathBuf, git_flag: Option<bool>) -> Result<()> {
     let registry = Registry::load()?;
     let template = registry
         .get(&template_name)
@@ -120,7 +119,7 @@ pub fn cmd_init(_config: Config, template_name: String, target_path: PathBuf, gi
         })
         .with_context(|| "run 'templative list' to see available templates")?;
 
-    let resolved = ResolvedOptions::build(&_config, template, git_flag);
+    let resolved = ResolvedOptions::build(&config, template, git_flag);
     let template_path = PathBuf::from(&template.location);
 
     if !template_path.exists() {
