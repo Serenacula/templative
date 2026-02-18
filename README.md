@@ -9,6 +9,8 @@ A tiny CLI for instantiating project templates from local directories. Templates
 -   `templative remove NAME` — Remove a template from the registry. Does not delete the actual template.
 -   `templative list` — Show registered templates and their paths (missing paths shown as “missing”).
 
+Optional flags are available to view with `--help`
+
 ## Config
 
 -   Registry location:
@@ -19,6 +21,5 @@ A tiny CLI for instantiating project templates from local directories. Templates
 
 When copying a template, the following are always excluded:
 
--   `.git/`
 -   `node_modules/`
 -   `.DS_Store`
