@@ -101,16 +101,27 @@ pub fn cmd_list() -> Result<()> {
 
     for template in templates {
         let desc = template.description.as_deref().unwrap_or("");
-        let is_missing = !utilities::is_git_url(&template.location)
-            && !PathBuf::from(&template.location).exists();
+        let path = PathBuf::from(&template.location);
+        let is_url = utilities::is_git_url(&template.location);
+        let is_missing = !is_url && !path.exists();
+        let is_symlink = !is_url && path.is_symlink();
+        let is_file = !is_url && !is_symlink && path.is_file();
+
         let location = if is_missing {
             format!("{} (missing)", template.location)
+        } else if is_symlink {
+            format!("{} (symlink)", template.location)
+        } else if is_file {
+            format!("{} (file)", template.location)
         } else {
             template.location.clone()
         };
+
         let row = format!("{}  {}  {}", pad(&template.name, name_w), pad(desc, desc_w), location);
         if is_missing {
             println!("{}", row.strikethrough().red());
+        } else if is_symlink || is_file {
+            println!("{}", row.blue());
         } else {
             println!("{}", row);
         }
