@@ -14,7 +14,10 @@ mod utilities;
 #[derive(Parser)]
 #[command(name = "templative")]
 #[command(about = "Instantiate project templates from local directories")]
+#[command(version, disable_version_flag = true)]
 struct Cli {
+    #[arg(short = 'v', long, action = clap::ArgAction::Version)]
+    version: Option<bool>,
     #[command(subcommand)]
     command: Command,
 }
