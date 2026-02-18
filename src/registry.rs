@@ -5,9 +5,6 @@ use std::path::Path;
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 
-#[cfg(not(unix))]
-use directories::ProjectDirs;
-
 use crate::errors::TemplativeError;
 
 const REGISTRY_VERSION: u32 = 1;
@@ -27,34 +24,8 @@ impl Registry {
         }
     }
 
-    pub fn config_dir() -> Result<std::path::PathBuf> {
-        #[cfg(unix)]
-        {
-            let base = std::env::var_os("XDG_CONFIG_HOME")
-                .map(std::path::PathBuf::from)
-                .or_else(|| {
-                    std::env::var_os("HOME")
-                        .map(|home| std::path::PathBuf::from(home).join(".config"))
-                });
-            match base {
-                Some(path) => Ok(path.join("templative")),
-                None => Err(anyhow::anyhow!(
-                    "could not determine config directory (set HOME or XDG_CONFIG_HOME)"
-                )),
-            }
-        }
-
-        #[cfg(not(unix))]
-        {
-            let project_dirs = ProjectDirs::from("com", "fayleemb", "templative")
-                .context("could not determine config directory")?;
-            Ok(project_dirs.config_dir().to_path_buf())
-        }
-    }
-
     pub fn registry_path() -> Result<std::path::PathBuf> {
-        let config_dir = Self::config_dir()?;
-        Ok(config_dir.join(REGISTRY_FILENAME))
+        Ok(crate::utilities::config_dir()?.join(REGISTRY_FILENAME))
     }
 
     pub fn load() -> Result<Self> {

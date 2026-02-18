@@ -3,13 +3,14 @@ use std::path::PathBuf;
 use anyhow::{Context, Result};
 use owo_colors::OwoColorize;
 
+use crate::config::Config;
 use crate::errors::TemplativeError;
 use crate::fs_copy;
 use crate::git;
 use crate::registry::Registry;
 use crate::utilities;
 
-pub fn cmd_add(path: PathBuf, name: Option<String>) -> Result<()> {
+pub fn cmd_add(_config: Config, path: PathBuf, name: Option<String>) -> Result<()> {
     let canonical = path
         .canonicalize()
         .with_context(|| format!("path not found or not absolute: {}", path.display()))?;
@@ -27,7 +28,7 @@ pub fn cmd_add(path: PathBuf, name: Option<String>) -> Result<()> {
     Ok(())
 }
 
-pub fn cmd_remove(template_name: String) -> Result<()> {
+pub fn cmd_remove(_config: Config, template_name: String) -> Result<()> {
     let mut registry = Registry::load()?;
     registry.remove(&template_name)?;
     registry.save()?;
@@ -35,7 +36,7 @@ pub fn cmd_remove(template_name: String) -> Result<()> {
     Ok(())
 }
 
-pub fn cmd_list() -> Result<()> {
+pub fn cmd_list(_config: Config) -> Result<()> {
     let registry = Registry::load()?;
     for name in registry.template_names_sorted() {
         let path_str = registry.templates.get(&name).unwrap();
@@ -50,7 +51,7 @@ pub fn cmd_list() -> Result<()> {
     Ok(())
 }
 
-pub fn cmd_init(template_name: String, target_path: PathBuf) -> Result<()> {
+pub fn cmd_init(_config: Config, template_name: String, target_path: PathBuf) -> Result<()> {
     let registry = Registry::load()?;
     let template_path =
         registry

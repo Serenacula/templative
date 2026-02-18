@@ -22,4 +22,7 @@ pub enum TemplativeError {
 
     #[error("unsupported registry version (expected 1)")]
     UnsupportedRegistryVersion,
+
+    #[error("unsupported config version (expected 1)")]
+    UnsupportedConfigVersion,
 }

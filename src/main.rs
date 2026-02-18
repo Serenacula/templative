@@ -3,6 +3,7 @@ use std::path::PathBuf;
 use anyhow::Result;
 use clap::Parser;
 
+mod config;
 mod errors;
 mod fs_copy;
 mod git;
@@ -48,14 +49,15 @@ enum Command {
 
 fn run() -> Result<()> {
     let cli = Cli::parse();
+    let config = config::Config::load()?;
     match cli.command {
         Command::Init {
             template_name,
             target_path,
-        } => ops::cmd_init(template_name, target_path),
-        Command::Add { path, name } => ops::cmd_add(path, name),
-        Command::Remove { template_name } => ops::cmd_remove(template_name),
-        Command::List => ops::cmd_list(),
+        } => ops::cmd_init(config, template_name, target_path),
+        Command::Add { path, name } => ops::cmd_add(config, path, name),
+        Command::Remove { template_name } => ops::cmd_remove(config, template_name),
+        Command::List => ops::cmd_list(config),
     }
 }
 
