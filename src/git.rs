@@ -107,6 +107,30 @@ pub fn ref_exists(repo: &Path, git_ref: &str) -> bool {
         .unwrap_or(false)
 }
 
+pub enum RefKind {
+    Branch,
+    Tag,
+    Commit,
+}
+
+pub fn classify_ref(repo: &Path, git_ref: &str) -> RefKind {
+    let check = |args: &[&str]| {
+        Command::new("git")
+            .args(args)
+            .current_dir(repo)
+            .output()
+            .map(|o| o.status.success())
+            .unwrap_or(false)
+    };
+    if check(&["rev-parse", "--verify", &format!("refs/heads/{}", git_ref)]) {
+        return RefKind::Branch;
+    }
+    if check(&["rev-parse", "--verify", &format!("refs/tags/{}", git_ref)]) {
+        return RefKind::Tag;
+    }
+    RefKind::Commit
+}
+
 pub fn init_and_commit(target_path: &Path, template_name: &str) -> Result<()> {
     check_user_config()?;
     init_repo(target_path)?;

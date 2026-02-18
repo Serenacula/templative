@@ -73,6 +73,15 @@ pub fn cmd_remove(template_name: String) -> Result<()> {
 }
 
 pub fn cmd_list() -> Result<()> {
+    enum Style { Normal, Yellow, Blue, Red, RedThrough }
+    struct Row {
+        name: String,
+        desc: String,
+        location: String,
+        status: String,
+        style: Style,
+    }
+
     let registry = Registry::load()?;
     if registry.templates.is_empty() {
         println!("no templates available: use `templative add <FOLDER>` to add a template");
@@ -80,73 +89,102 @@ pub fn cmd_list() -> Result<()> {
     }
     let templates = registry.templates_sorted();
 
-    let name_w = templates.iter()
-        .map(|t| t.name.width())
-        .max().unwrap_or(0)
-        .max("NAME".width());
-    let desc_w = templates.iter()
-        .map(|t| t.description.as_deref().unwrap_or("").width())
-        .max().unwrap_or(0)
-        .max("DESCRIPTION".width());
-
-    let pad = |s: &str, w: usize| -> String {
-        let display_w = s.width();
-        format!("{}{}", s, " ".repeat(w.saturating_sub(display_w)))
-    };
-
-    let upad = |s: &str, w: usize| -> String {
-        format!("{}{}", s.underline(), " ".repeat(w.saturating_sub(s.width())))
-    };
-    println!("{}  {}  {}", upad("NAME", name_w), upad("DESCRIPTION", desc_w), "LOCATION".underline());
-
-    for template in templates {
-        let desc = template.description.as_deref().unwrap_or("");
-        let path = PathBuf::from(&template.location);
-        let is_url = utilities::is_git_url(&template.location);
-        let is_symlink = !is_url && path.is_symlink();
-        let is_broken_symlink = is_symlink && !path.exists();
-        let is_missing = !is_url && !is_symlink && !path.exists();
-        let is_file = !is_url && !is_missing && !is_broken_symlink && !is_symlink && path.is_file();
-        let is_empty = !is_url && !is_missing && !is_broken_symlink && !is_file
+    let rows: Vec<Row> = templates.iter().map(|t| {
+        let path = PathBuf::from(&t.location);
+        let is_url = utilities::is_git_url(&t.location);
+        let is_sym = !is_url && path.is_symlink();
+        let is_broken_sym = is_sym && !path.exists();
+        let is_missing = !is_url && !is_sym && !path.exists();
+        let is_file = !is_url && !is_missing && !is_broken_sym && !is_sym && path.is_file();
+        let is_empty = !is_url && !is_missing && !is_broken_sym && !is_file
             && utilities::is_dir_empty(&path).unwrap_or(false);
-        let has_no_git = !is_url && !is_missing && !is_broken_symlink && !is_file && !is_empty
+        let has_no_git = !is_url && !is_missing && !is_broken_sym && !is_file && !is_empty
             && !path.join(".git").exists();
 
-        // None = no ref set; Some(None) = set but uncheckable; Some(Some(b)) = checked
-        let pinned_ref = template.commit.as_deref().or(template.git_ref.as_deref());
-        let ref_status: Option<Option<bool>> = pinned_ref.map(|r| {
+        let (status, style) = if is_missing {
+            ("(folder missing)".into(), Style::RedThrough)
+        } else if is_broken_sym {
+            ("(symlink broken)".into(), Style::RedThrough)
+        } else if is_empty {
+            ("(folder empty)".into(), Style::Red)
+        } else if let Some(ref_val) = t.commit.as_deref().or(t.git_ref.as_deref()) {
             let repo = if is_url {
-                utilities::cache_path_for_url(&template.location).ok()
+                utilities::cache_path_for_url(&t.location).ok()
                     .filter(|p| p.join(".git").exists())
             } else if path.join(".git").exists() {
                 Some(path.clone())
             } else {
                 None
             };
-            repo.map(|p| git::ref_exists(&p, r))
-        });
-
-        let location = if is_missing {
-            format!("{} (missing)", template.location)
-        } else if is_symlink {
-            format!("{} (symlink)", template.location)
+            match repo {
+                None => {
+                    let s = if t.commit.is_some() {
+                        format!("(at git commit {})", ref_val)
+                    } else {
+                        format!("(git ref {})", ref_val)
+                    };
+                    (s, Style::Blue)
+                }
+                Some(r) if !git::ref_exists(&r, ref_val) => {
+                    (format!("(git {} missing)", ref_val), Style::Red)
+                }
+                Some(r) => {
+                    let s = if t.commit.is_some() {
+                        format!("(at git commit {})", ref_val)
+                    } else {
+                        match git::classify_ref(&r, ref_val) {
+                            git::RefKind::Branch => format!("(in git branch {})", ref_val),
+                            git::RefKind::Tag    => format!("(at git tag {})", ref_val),
+                            git::RefKind::Commit => format!("(at git commit {})", ref_val),
+                        }
+                    };
+                    (s, Style::Blue)
+                }
+            }
         } else if is_file {
-            format!("{} (file)", template.location)
+            ("(single file)".into(), Style::Blue)
+        } else if is_sym {
+            ("(symlink)".into(), Style::Blue)
+        } else if has_no_git {
+            ("(no git)".into(), Style::Yellow)
         } else {
-            template.location.clone()
+            (String::new(), Style::Normal)
         };
 
-        let row = format!("{}  {}  {}", pad(&template.name, name_w), pad(desc, desc_w), location);
-        if is_missing {
-            println!("{}", row.strikethrough().red());
-        } else if is_broken_symlink || is_empty || ref_status == Some(Some(false)) {
-            println!("{}", row.red());
-        } else if is_file || is_symlink || matches!(ref_status, Some(Some(true)) | Some(None)) {
-            println!("{}", row.blue());
-        } else if has_no_git {
-            println!("{}", row.yellow());
-        } else {
-            println!("{}", row);
+        Row {
+            name: t.name.clone(),
+            desc: t.description.as_deref().unwrap_or("").to_string(),
+            location: t.location.clone(),
+            status,
+            style,
+        }
+    }).collect();
+
+    let pad = |s: &str, w: usize| -> String {
+        format!("{}{}", s, " ".repeat(w.saturating_sub(s.width())))
+    };
+    let upad = |s: &str, w: usize| -> String {
+        format!("{}{}", s.underline(), " ".repeat(w.saturating_sub(s.width())))
+    };
+
+    let name_w = rows.iter().map(|r| r.name.width()).max().unwrap_or(0).max("NAME".width());
+    let desc_w = rows.iter().map(|r| r.desc.width()).max().unwrap_or(0).max("DESCRIPTION".width());
+    let loc_w  = rows.iter().map(|r| r.location.width()).max().unwrap_or(0).max("LOCATION".width());
+
+    println!("{}  {}  {}  {}",
+        upad("NAME", name_w), upad("DESCRIPTION", desc_w),
+        upad("LOCATION", loc_w), "STATUS".underline());
+
+    for row in &rows {
+        let line = format!("{}  {}  {}  {}",
+            pad(&row.name, name_w), pad(&row.desc, desc_w),
+            pad(&row.location, loc_w), row.status);
+        match row.style {
+            Style::Normal   => println!("{}", line),
+            Style::Yellow   => println!("{}", line.yellow()),
+            Style::Blue     => println!("{}", line.blue()),
+            Style::Red      => println!("{}", line.red()),
+            Style::RedThrough => println!("{}", line.red().strikethrough()),
         }
     }
     Ok(())
