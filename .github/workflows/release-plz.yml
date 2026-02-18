@@ -10,11 +10,8 @@ permissions:
     pull-requests: write
 
 jobs:
-    release-plz:
+    release-plz-release:
         runs-on: ubuntu-latest
-        permissions:
-            contents: write
-            pull-requests: write
         steps:
             - uses: actions/checkout@v4
               with:
@@ -26,5 +23,24 @@ jobs:
             - uses: release-plz/action@v0.5.126
               with:
                   command: release
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    release-plz-pr:
+        runs-on: ubuntu-latest
+        concurrency:
+            group: release-plz-pr-${{ github.ref }}
+            cancel-in-progress: false
+        steps:
+            - uses: actions/checkout@v4
+              with:
+                  fetch-depth: 0
+                  persist-credentials: false
+
+            - uses: dtolnay/rust-toolchain@stable
+
+            - uses: release-plz/action@v0.5.126
+              with:
+                  command: release-pr
               env:
                   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
