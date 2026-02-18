@@ -94,7 +94,10 @@ pub fn cmd_list() -> Result<()> {
         format!("{}{}", s, " ".repeat(w.saturating_sub(display_w)))
     };
 
-    println!("{}  {}  LOCATION", pad("NAME", name_w), pad("DESCRIPTION", desc_w));
+    println!("{}  {}  {}",
+        pad("NAME", name_w).underline(),
+        pad("DESCRIPTION", desc_w).underline(),
+        "LOCATION".underline());
 
     for template in templates {
         let desc = template.description.as_deref().unwrap_or("");
