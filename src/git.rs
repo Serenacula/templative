@@ -98,6 +98,15 @@ pub fn checkout_ref(repo: &Path, git_ref: &str) -> Result<()> {
     run_git(repo, &["checkout", git_ref])
 }
 
+pub fn ref_exists(repo: &Path, git_ref: &str) -> bool {
+    Command::new("git")
+        .args(["cat-file", "-e", git_ref])
+        .current_dir(repo)
+        .output()
+        .map(|o| o.status.success())
+        .unwrap_or(false)
+}
+
 pub fn init_and_commit(target_path: &Path, template_name: &str) -> Result<()> {
     check_user_config()?;
     init_repo(target_path)?;

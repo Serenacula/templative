@@ -103,13 +103,28 @@ pub fn cmd_list() -> Result<()> {
         let desc = template.description.as_deref().unwrap_or("");
         let path = PathBuf::from(&template.location);
         let is_url = utilities::is_git_url(&template.location);
-        let is_missing = !is_url && !path.exists();
         let is_symlink = !is_url && path.is_symlink();
-        let is_file = !is_url && !is_symlink && path.is_file();
-        let is_empty = !is_url && !is_missing && !is_symlink && !is_file
+        let is_broken_symlink = is_symlink && !path.exists();
+        let is_missing = !is_url && !is_symlink && !path.exists();
+        let is_file = !is_url && !is_missing && !is_broken_symlink && !is_symlink && path.is_file();
+        let is_empty = !is_url && !is_missing && !is_broken_symlink && !is_file
             && utilities::is_dir_empty(&path).unwrap_or(false);
-        let has_no_git = !is_url && !is_missing && !is_symlink && !is_file && !is_empty
+        let has_no_git = !is_url && !is_missing && !is_broken_symlink && !is_file && !is_empty
             && !path.join(".git").exists();
+
+        // None = no ref set; Some(None) = set but uncheckable; Some(Some(b)) = checked
+        let pinned_ref = template.commit.as_deref().or(template.git_ref.as_deref());
+        let ref_status: Option<Option<bool>> = pinned_ref.map(|r| {
+            let repo = if is_url {
+                utilities::cache_path_for_url(&template.location).ok()
+                    .filter(|p| p.join(".git").exists())
+            } else if path.join(".git").exists() {
+                Some(path.clone())
+            } else {
+                None
+            };
+            repo.map(|p| git::ref_exists(&p, r))
+        });
 
         let location = if is_missing {
             format!("{} (missing)", template.location)
@@ -124,9 +139,9 @@ pub fn cmd_list() -> Result<()> {
         let row = format!("{}  {}  {}", pad(&template.name, name_w), pad(desc, desc_w), location);
         if is_missing {
             println!("{}", row.strikethrough().red());
-        } else if is_empty {
+        } else if is_broken_symlink || is_empty || ref_status == Some(Some(false)) {
             println!("{}", row.red());
-        } else if is_symlink || is_file {
+        } else if is_file || is_symlink || matches!(ref_status, Some(Some(true)) | Some(None)) {
             println!("{}", row.blue());
         } else if has_no_git {
             println!("{}", row.yellow());
