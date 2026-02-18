@@ -3,6 +3,8 @@ use std::path::PathBuf;
 use anyhow::{Context, Result};
 use owo_colors::OwoColorize;
 
+use unicode_width::UnicodeWidthStr;
+
 use crate::config::{Config, GitMode, UpdateOnInit};
 use crate::errors::TemplativeError;
 use crate::fs_copy;
@@ -76,17 +78,38 @@ pub fn cmd_list() -> Result<()> {
         println!("no templates available: use `templative add <FOLDER>` to add a template");
         return Ok(());
     }
-    for template in registry.templates_sorted() {
-        if utilities::is_git_url(&template.location) {
-            println!("{}  {}", template.name, template.location);
+    let templates = registry.templates_sorted();
+
+    let name_w = templates.iter()
+        .map(|t| t.name.width())
+        .max().unwrap_or(0)
+        .max("NAME".width());
+    let desc_w = templates.iter()
+        .map(|t| t.description.as_deref().unwrap_or("").width())
+        .max().unwrap_or(0)
+        .max("DESCRIPTION".width());
+
+    let pad = |s: &str, w: usize| -> String {
+        let display_w = s.width();
+        format!("{}{}", s, " ".repeat(w.saturating_sub(display_w)))
+    };
+
+    println!("{}  {}  LOCATION", pad("NAME", name_w), pad("DESCRIPTION", desc_w));
+
+    for template in templates {
+        let desc = template.description.as_deref().unwrap_or("");
+        let is_missing = !utilities::is_git_url(&template.location)
+            && !PathBuf::from(&template.location).exists();
+        let location = if is_missing {
+            format!("{} (missing)", template.location)
         } else {
-            let path_buf = PathBuf::from(&template.location);
-            if path_buf.exists() {
-                println!("{}  {}", template.name, template.location);
-            } else {
-                let display = format!("{}  {} (missing)", template.name, template.location);
-                println!("{}", display.strikethrough().red());
-            }
+            template.location.clone()
+        };
+        let row = format!("{}  {}  {}", pad(&template.name, name_w), pad(desc, desc_w), location);
+        if is_missing {
+            println!("{}", row.strikethrough().red());
+        } else {
+            println!("{}", row);
         }
     }
     Ok(())

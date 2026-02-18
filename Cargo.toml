@@ -28,5 +28,6 @@ owo-colors = "4"
 anyhow = "1"
 thiserror = "1"
 tempfile = "3"
+unicode-width = "0.2"
 
 [dev-dependencies]
