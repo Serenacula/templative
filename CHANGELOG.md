@@ -7,7 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.5.0](https://github.com/Serenacula/templative/compare/v0.4.0...v0.5.0) - 2026-02-18
+## [0.5.1](https://github.com/Serenacula/templative/compare/v0.5.0...v0.5.1) - 2026-02-18
+
+### Added
+
+-   add git URL template support
+-   implement pre_init and post_init hooks
+
+### Other
+
+-   add tests for git URL features
+-   updating readme
+
+## [0.5.0](https://github.com/Serenacula/templative/compare/v0.1.0...v0.5.0) - 2026-02-18
 
 ### Added
 
