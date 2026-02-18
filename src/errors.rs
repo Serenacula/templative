@@ -25,4 +25,5 @@ pub enum TemplativeError {
 
     #[error("unsupported config version (expected 1)")]
     UnsupportedConfigVersion,
+
 }
