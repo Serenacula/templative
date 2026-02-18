@@ -49,6 +49,29 @@ enum Command {
         /// Template name
         template_name: String,
     },
+    /// Update fields on a registered template
+    Change {
+        /// Template name
+        template_name: String,
+        /// New name
+        #[arg(long)]
+        name: Option<String>,
+        /// New description
+        #[arg(long)]
+        description: Option<String>,
+        /// New location
+        #[arg(long)]
+        location: Option<PathBuf>,
+        /// Pin to a specific commit
+        #[arg(long)]
+        commit: Option<String>,
+        /// Pre-init hook command
+        #[arg(long = "pre-init")]
+        pre_init: Option<String>,
+        /// Post-init hook command
+        #[arg(long = "post-init")]
+        post_init: Option<String>,
+    },
     /// List registered templates and their paths
     List,
 }
@@ -63,6 +86,15 @@ fn run() -> Result<()> {
         } => ops::cmd_init(config, template_name, target_path),
         Command::Add { path, name, description } => ops::cmd_add(config, path, name, description),
         Command::Remove { template_name } => ops::cmd_remove(config, template_name),
+        Command::Change {
+            template_name,
+            name,
+            description,
+            location,
+            commit,
+            pre_init,
+            post_init,
+        } => ops::cmd_change(config, template_name, name, description, location, commit, pre_init, post_init),
         Command::List => ops::cmd_list(config),
     }
 }

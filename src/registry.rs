@@ -111,6 +111,10 @@ impl Registry {
         self.templates.iter().find(|t| t.name == name)
     }
 
+    pub fn get_mut(&mut self, name: &str) -> Option<&mut Template> {
+        self.templates.iter_mut().find(|t| t.name == name)
+    }
+
     pub fn templates_sorted(&self) -> Vec<&Template> {
         let mut sorted: Vec<&Template> = self.templates.iter().collect();
         sorted.sort_by(|a, b| a.name.cmp(&b.name));

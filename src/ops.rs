@@ -62,6 +62,51 @@ pub fn cmd_list(_config: Config) -> Result<()> {
     Ok(())
 }
 
+pub fn cmd_change(
+    _config: Config,
+    template_name: String,
+    name: Option<String>,
+    description: Option<String>,
+    location: Option<PathBuf>,
+    commit: Option<String>,
+    pre_init: Option<String>,
+    post_init: Option<String>,
+) -> Result<()> {
+    if name.is_none() && description.is_none() && location.is_none()
+        && commit.is_none() && pre_init.is_none() && post_init.is_none()
+    {
+        anyhow::bail!("no changes specified");
+    }
+
+    let mut registry = Registry::load()?;
+
+    if let Some(ref new_name) = name {
+        if registry.get(new_name).is_some() {
+            return Err(TemplativeError::TemplateExists { name: new_name.clone() }.into());
+        }
+    }
+
+    let template = registry
+        .get_mut(&template_name)
+        .ok_or_else(|| TemplativeError::TemplateNotFound { name: template_name.clone() })?;
+
+    if let Some(new_name) = name { template.name = new_name; }
+    if let Some(new_description) = description { template.description = Some(new_description); }
+    if let Some(new_location) = location {
+        let canonical = new_location
+            .canonicalize()
+            .with_context(|| format!("path not found: {}", new_location.display()))?;
+        template.location = canonical.to_string_lossy().into_owned();
+    }
+    if let Some(new_commit) = commit { template.commit = Some(new_commit); }
+    if let Some(new_pre_init) = pre_init { template.pre_init = Some(new_pre_init); }
+    if let Some(new_post_init) = post_init { template.post_init = Some(new_post_init); }
+
+    registry.save()?;
+    println!("updated {}", template_name);
+    Ok(())
+}
+
 pub fn cmd_init(_config: Config, template_name: String, target_path: PathBuf) -> Result<()> {
     let registry = Registry::load()?;
     let template = registry
