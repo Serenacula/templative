@@ -8,6 +8,7 @@ use crate::errors::TemplativeError;
 use crate::fs_copy;
 use crate::git;
 use crate::registry::{Registry, Template};
+use crate::resolved::ResolvedOptions;
 use crate::utilities;
 
 pub fn cmd_add(_config: Config, path: PathBuf, name: Option<String>, description: Option<String>) -> Result<()> {
@@ -116,6 +117,7 @@ pub fn cmd_init(_config: Config, template_name: String, target_path: PathBuf) ->
         })
         .with_context(|| "run 'templative list' to see available templates")?;
 
+    let _resolved = ResolvedOptions::build(&_config, template);
     let template_path = PathBuf::from(&template.location);
 
     if !template_path.exists() {

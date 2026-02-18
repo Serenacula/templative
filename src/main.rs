@@ -9,6 +9,7 @@ mod fs_copy;
 mod git;
 mod ops;
 mod registry;
+mod resolved;
 mod utilities;
 
 #[derive(Parser)]
