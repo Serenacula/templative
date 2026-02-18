@@ -8,6 +8,7 @@ mod fs_copy;
 mod git;
 mod ops;
 mod registry;
+mod utilities;
 
 #[derive(Parser)]
 #[command(name = "templative")]
