@@ -94,10 +94,10 @@ pub fn cmd_list() -> Result<()> {
         format!("{}{}", s, " ".repeat(w.saturating_sub(display_w)))
     };
 
-    println!("{}  {}  {}",
-        pad("NAME", name_w).underline(),
-        pad("DESCRIPTION", desc_w).underline(),
-        "LOCATION".underline());
+    let upad = |s: &str, w: usize| -> String {
+        format!("{}{}", s.underline(), " ".repeat(w.saturating_sub(s.width())))
+    };
+    println!("{}  {}  {}", upad("NAME", name_w), upad("DESCRIPTION", desc_w), "LOCATION".underline());
 
     for template in templates {
         let desc = template.description.as_deref().unwrap_or("");
