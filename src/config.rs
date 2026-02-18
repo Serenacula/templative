@@ -58,9 +58,7 @@ impl Config {
     pub fn load() -> Result<Self> {
         let path = Self::config_path()?;
         let config = Self::load_from_path(&path)?;
-        if !path.exists() {
-            config.save_to_path(&path)?;
-        }
+        config.save_to_path(&path)?;
         Ok(config)
     }
 
@@ -87,8 +85,7 @@ impl Config {
         let parent = path.parent().context("config path has no parent")?;
         fs::create_dir_all(parent)
             .with_context(|| format!("failed to create config dir: {}", parent.display()))?;
-        let contents = serde_json::to_string_pretty(self)
-            .context("failed to serialize config")?;
+        let contents = serde_json::to_string_pretty(self).context("failed to serialize config")?;
         let temp_path = path.with_extension("tmp");
         fs::write(&temp_path, &contents)
             .with_context(|| format!("failed to write config: {}", temp_path.display()))?;

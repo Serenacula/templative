@@ -106,6 +106,10 @@ pub fn cmd_list() -> Result<()> {
         let is_missing = !is_url && !path.exists();
         let is_symlink = !is_url && path.is_symlink();
         let is_file = !is_url && !is_symlink && path.is_file();
+        let is_empty = !is_url && !is_missing && !is_symlink && !is_file
+            && utilities::is_dir_empty(&path).unwrap_or(false);
+        let has_no_git = !is_url && !is_missing && !is_symlink && !is_file && !is_empty
+            && !path.join(".git").exists();
 
         let location = if is_missing {
             format!("{} (missing)", template.location)
@@ -120,8 +124,12 @@ pub fn cmd_list() -> Result<()> {
         let row = format!("{}  {}  {}", pad(&template.name, name_w), pad(desc, desc_w), location);
         if is_missing {
             println!("{}", row.strikethrough().red());
+        } else if is_empty {
+            println!("{}", row.red());
         } else if is_symlink || is_file {
             println!("{}", row.blue());
+        } else if has_no_git {
+            println!("{}", row.yellow());
         } else {
             println!("{}", row);
         }
