@@ -38,6 +38,10 @@ pub fn cmd_remove(_config: Config, template_name: String) -> Result<()> {
 
 pub fn cmd_list(_config: Config) -> Result<()> {
     let registry = Registry::load()?;
+    if registry.templates.is_empty() {
+        println!("no templates available: use `templative add <FOLDER>` to add a template");
+        return Ok(());
+    }
     for name in registry.template_names_sorted() {
         let path_str = registry.templates.get(&name).unwrap();
         let path_buf = PathBuf::from(path_str);
@@ -53,12 +57,12 @@ pub fn cmd_list(_config: Config) -> Result<()> {
 
 pub fn cmd_init(_config: Config, template_name: String, target_path: PathBuf) -> Result<()> {
     let registry = Registry::load()?;
-    let template_path = registry.get_path(&template_name).ok_or_else(|| {
-        TemplativeError::TemplateNotFound {
+    let template_path = registry
+        .get_path(&template_name)
+        .ok_or_else(|| TemplativeError::TemplateNotFound {
             name: template_name.clone(),
-        }
-    })
-    .with_context(|| "run 'templative list' to see available templates")?;
+        })
+        .with_context(|| "run 'templative list' to see available templates")?;
     if !template_path.exists() {
         return Err(TemplativeError::TemplatePathMissing {
             path: template_path.clone(),
