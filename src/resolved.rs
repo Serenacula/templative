@@ -83,4 +83,54 @@ mod tests {
         let resolved = ResolvedOptions::build(&make_config(true), &make_template(None), None, Some(false));
         assert!(!resolved.fresh);
     }
+
+    #[test]
+    fn fresh_template_overrides_config() {
+        let mut t = make_template(None);
+        t.fresh = Some(false);
+        let resolved = ResolvedOptions::build(&make_config(true), &t, None, None);
+        assert!(!resolved.fresh);
+    }
+
+    #[test]
+    fn no_cache_resolves_from_template() {
+        let mut t = make_template(None);
+        t.no_cache = Some(true);
+        let resolved = ResolvedOptions::build(&make_config(true), &t, None, None);
+        assert!(resolved.no_cache);
+    }
+
+    #[test]
+    fn no_cache_resolves_from_config() {
+        let mut config = make_config(true);
+        config.no_cache = true;
+        let resolved = ResolvedOptions::build(&config, &make_template(None), None, None);
+        assert!(resolved.no_cache);
+    }
+
+    #[test]
+    fn template_no_cache_overrides_config() {
+        let mut config = make_config(true);
+        config.no_cache = true;
+        let mut t = make_template(None);
+        t.no_cache = Some(false);
+        let resolved = ResolvedOptions::build(&config, &t, None, None);
+        assert!(!resolved.no_cache);
+    }
+
+    #[test]
+    fn git_ref_resolves_from_template() {
+        let mut t = make_template(None);
+        t.git_ref = Some("v1.0".into());
+        let resolved = ResolvedOptions::build(&make_config(true), &t, None, None);
+        assert_eq!(resolved.git_ref.as_deref(), Some("v1.0"));
+    }
+
+    #[test]
+    fn update_on_init_comes_from_config() {
+        let mut config = make_config(true);
+        config.update_on_init = UpdateOnInit::Never;
+        let resolved = ResolvedOptions::build(&config, &make_template(None), None, None);
+        assert_eq!(resolved.update_on_init, UpdateOnInit::Never);
+    }
 }

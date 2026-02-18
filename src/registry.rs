@@ -185,6 +185,47 @@ mod tests {
     }
 
     #[test]
+    fn old_registry_without_new_fields_deserializes_cleanly() {
+        let temp = tempfile::tempdir().unwrap();
+        let path = temp.path().join("templates.json");
+        std::fs::write(
+            &path,
+            r#"{"version": 2, "templates": [{"name": "foo", "location": "/path"}]}"#,
+        )
+        .unwrap();
+        let registry = Registry::load_from_path(&path).unwrap();
+        let t = &registry.templates[0];
+        assert!(t.git_ref.is_none());
+        assert!(t.no_cache.is_none());
+        assert!(t.fresh.is_none());
+    }
+
+    #[test]
+    fn new_fields_serialize_when_set() {
+        let temp = tempfile::tempdir().unwrap();
+        let path = temp.path().join("templates.json");
+        let mut registry = Registry::new();
+        registry.templates.push(Template {
+            name: "foo".into(),
+            location: "/path".into(),
+            git: None,
+            description: None,
+            commit: None,
+            pre_init: None,
+            post_init: None,
+            git_ref: Some("main".into()),
+            no_cache: Some(true),
+            fresh: Some(false),
+        });
+        registry.save_to_path(&path).unwrap();
+        let contents = std::fs::read_to_string(&path).unwrap();
+        assert!(contents.contains("git_ref"));
+        assert!(contents.contains("main"));
+        assert!(contents.contains("no_cache"));
+        assert!(contents.contains("fresh"));
+    }
+
+    #[test]
     fn skips_none_fields_in_json() {
         let temp = tempfile::tempdir().unwrap();
         let path = temp.path().join("templates.json");

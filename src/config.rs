@@ -147,4 +147,47 @@ mod tests {
         assert!(result.is_ok());
         assert_eq!(result.unwrap().version, 1);
     }
+
+    #[test]
+    fn old_config_without_new_fields_uses_defaults() {
+        let temp = tempfile::tempdir().unwrap();
+        let path = temp.path().join("config.json");
+        std::fs::write(&path, r#"{"version": 1, "git": true}"#).unwrap();
+        let config = Config::load_from_path(&path).unwrap();
+        assert!(config.fresh);
+        assert_eq!(config.update_on_init, UpdateOnInit::OnlyUrl);
+        assert!(!config.no_cache);
+    }
+
+    #[test]
+    fn update_on_init_serializes_kebab_case() {
+        let config = Config::new();
+        let json = serde_json::to_string(&config).unwrap();
+        assert!(json.contains("only-url"));
+    }
+
+    #[test]
+    fn update_on_init_roundtrip() {
+        let temp = tempfile::tempdir().unwrap();
+        let path = temp.path().join("config.json");
+        let config = Config {
+            version: 1,
+            git: true,
+            fresh: false,
+            update_on_init: UpdateOnInit::Always,
+            no_cache: true,
+        };
+        config.save_to_path(&path).unwrap();
+        let loaded = Config::load_from_path(&path).unwrap();
+        assert!(!loaded.fresh);
+        assert_eq!(loaded.update_on_init, UpdateOnInit::Always);
+        assert!(loaded.no_cache);
+    }
+
+    #[test]
+    fn update_on_init_never_roundtrip() {
+        let json = r#"{"version":1,"git":true,"fresh":true,"update_on_init":"never","no_cache":false}"#;
+        let config: Config = serde_json::from_str(json).unwrap();
+        assert_eq!(config.update_on_init, UpdateOnInit::Never);
+    }
 }

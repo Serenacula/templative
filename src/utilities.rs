@@ -72,3 +72,57 @@ pub fn is_dir_empty(path: &std::path::Path) -> Result<bool> {
         .with_context(|| format!("failed to read directory: {}", path.display()))?;
     Ok(entries.next().is_none())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn is_git_url_recognises_https() {
+        assert!(is_git_url("https://github.com/user/repo"));
+    }
+
+    #[test]
+    fn is_git_url_recognises_http() {
+        assert!(is_git_url("http://example.com/repo"));
+    }
+
+    #[test]
+    fn is_git_url_recognises_git_at() {
+        assert!(is_git_url("git@github.com:user/repo.git"));
+    }
+
+    #[test]
+    fn is_git_url_recognises_git_protocol() {
+        assert!(is_git_url("git://example.com/repo"));
+    }
+
+    #[test]
+    fn is_git_url_rejects_local_paths() {
+        assert!(!is_git_url("/path/to/template"));
+        assert!(!is_git_url("./relative"));
+        assert!(!is_git_url("template"));
+    }
+
+    #[test]
+    fn cache_path_for_url_is_deterministic() {
+        let a = cache_path_for_url("https://github.com/user/repo").unwrap();
+        let b = cache_path_for_url("https://github.com/user/repo").unwrap();
+        assert_eq!(a, b);
+    }
+
+    #[test]
+    fn cache_path_for_url_differs_for_different_urls() {
+        let a = cache_path_for_url("https://github.com/user/repo-a").unwrap();
+        let b = cache_path_for_url("https://github.com/user/repo-b").unwrap();
+        assert_ne!(a, b);
+    }
+
+    #[test]
+    fn cache_path_for_url_ends_with_hex_segment() {
+        let path = cache_path_for_url("https://github.com/user/repo").unwrap();
+        let hex = path.file_name().unwrap().to_string_lossy();
+        assert_eq!(hex.len(), 16);
+        assert!(hex.chars().all(|c| c.is_ascii_hexdigit()));
+    }
+}
