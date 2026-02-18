@@ -7,10 +7,10 @@ use crate::config::Config;
 use crate::errors::TemplativeError;
 use crate::fs_copy;
 use crate::git;
-use crate::registry::Registry;
+use crate::registry::{Registry, Template};
 use crate::utilities;
 
-pub fn cmd_add(_config: Config, path: PathBuf, name: Option<String>) -> Result<()> {
+pub fn cmd_add(_config: Config, path: PathBuf, name: Option<String>, description: Option<String>) -> Result<()> {
     let canonical = path
         .canonicalize()
         .with_context(|| format!("path not found or not absolute: {}", path.display()))?;
@@ -20,11 +20,19 @@ pub fn cmd_add(_config: Config, path: PathBuf, name: Option<String>) -> Result<(
             .map(|os| os.to_string_lossy().into_owned())
             .unwrap_or_else(|| "template".to_string())
     });
-    let path_str = canonical.to_string_lossy().into_owned();
+    let location = canonical.to_string_lossy().into_owned();
+    let template = Template {
+        name: template_name.clone(),
+        location: location.clone(),
+        description,
+        commit: None,
+        pre_init: None,
+        post_init: None,
+    };
     let mut registry = Registry::load()?;
-    registry.add(template_name.clone(), path_str.clone())?;
+    registry.add(template)?;
     registry.save()?;
-    println!("added {} -> {}", template_name, path_str);
+    println!("added {} -> {}", template_name, location);
     Ok(())
 }
 
@@ -42,14 +50,13 @@ pub fn cmd_list(_config: Config) -> Result<()> {
         println!("no templates available: use `templative add <FOLDER>` to add a template");
         return Ok(());
     }
-    for name in registry.template_names_sorted() {
-        let path_str = registry.templates.get(&name).unwrap();
-        let path_buf = PathBuf::from(path_str);
+    for template in registry.templates_sorted() {
+        let path_buf = PathBuf::from(&template.location);
         if path_buf.exists() {
-            println!("{}  {}", name, path_str);
+            println!("{}  {}", template.name, template.location);
         } else {
-            let name_display = format!("{}  {} (missing)", name, path_str);
-            println!("{}", name_display.strikethrough().red());
+            let display = format!("{}  {} (missing)", template.name, template.location);
+            println!("{}", display.strikethrough().red());
         }
     }
     Ok(())
@@ -57,12 +64,15 @@ pub fn cmd_list(_config: Config) -> Result<()> {
 
 pub fn cmd_init(_config: Config, template_name: String, target_path: PathBuf) -> Result<()> {
     let registry = Registry::load()?;
-    let template_path = registry
-        .get_path(&template_name)
+    let template = registry
+        .get(&template_name)
         .ok_or_else(|| TemplativeError::TemplateNotFound {
             name: template_name.clone(),
         })
         .with_context(|| "run 'templative list' to see available templates")?;
+
+    let template_path = PathBuf::from(&template.location);
+
     if !template_path.exists() {
         return Err(TemplativeError::TemplatePathMissing {
             path: template_path.clone(),

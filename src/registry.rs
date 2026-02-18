@@ -1,30 +1,43 @@
-use std::collections::BTreeMap;
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 
 use crate::errors::TemplativeError;
 
-const REGISTRY_VERSION: u32 = 1;
+const REGISTRY_VERSION: u32 = 2;
 const REGISTRY_FILENAME: &str = "templates.json";
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Template {
+    pub name: String,
+    pub location: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub commit: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub pre_init: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub post_init: Option<String>,
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Registry {
     pub version: u32,
-    pub templates: BTreeMap<String, String>,
+    pub templates: Vec<Template>,
 }
 
 impl Registry {
     pub fn new() -> Self {
         Self {
             version: REGISTRY_VERSION,
-            templates: BTreeMap::new(),
+            templates: Vec::new(),
         }
     }
 
-    pub fn registry_path() -> Result<std::path::PathBuf> {
+    pub fn registry_path() -> Result<PathBuf> {
         Ok(crate::utilities::config_dir()?.join(REGISTRY_FILENAME))
     }
 
@@ -37,8 +50,7 @@ impl Registry {
         Ok(registry)
     }
 
-    /// Load registry from a specific path (for tests).
-    pub fn load_from_path(path: &std::path::Path) -> Result<Self> {
+    pub fn load_from_path(path: &Path) -> Result<Self> {
         if !path.exists() {
             return Ok(Self::new());
         }
@@ -47,18 +59,21 @@ impl Registry {
         let registry: Self = serde_json::from_str(&contents)
             .with_context(|| format!("failed to parse registry: {}", path.display()))?;
         if registry.version != REGISTRY_VERSION {
-            return Err(TemplativeError::UnsupportedRegistryVersion.into());
+            return Err(TemplativeError::UnsupportedRegistryVersion {
+                found: registry.version,
+                expected: REGISTRY_VERSION,
+                path: path.display().to_string(),
+            }
+            .into());
         }
         Ok(registry)
     }
 
     pub fn save(&self) -> Result<()> {
-        let path = Self::registry_path()?;
-        self.save_to_path(&path)
+        self.save_to_path(&Self::registry_path()?)
     }
 
-    /// Save registry to a specific path (for tests). Parent dir must exist.
-    pub fn save_to_path(&self, path: &std::path::Path) -> Result<()> {
+    pub fn save_to_path(&self, path: &Path) -> Result<()> {
         let parent = path.parent().context("registry path has no parent")?;
         fs::create_dir_all(parent)
             .with_context(|| format!("failed to create config dir: {}", parent.display()))?;
@@ -72,33 +87,34 @@ impl Registry {
         Ok(())
     }
 
-    pub fn add(&mut self, name: String, path: String) -> Result<()> {
-        if self.templates.contains_key(&name) {
-            return Err(TemplativeError::TemplateExists { name }.into());
+    pub fn add(&mut self, template: Template) -> Result<()> {
+        if self.templates.iter().any(|t| t.name == template.name) {
+            return Err(TemplativeError::TemplateExists { name: template.name }.into());
         }
-        self.templates.insert(name, path);
+        self.templates.push(template);
         Ok(())
     }
 
     pub fn remove(&mut self, name: &str) -> Result<()> {
-        if !self.templates.contains_key(name) {
-            return Err(TemplativeError::TemplateNotFound {
+        let pos = self
+            .templates
+            .iter()
+            .position(|t| t.name == name)
+            .ok_or_else(|| TemplativeError::TemplateNotFound {
                 name: name.to_string(),
-            }
-            .into());
-        }
-        self.templates.remove(name);
+            })?;
+        self.templates.remove(pos);
         Ok(())
     }
 
-    pub fn get_path(&self, name: &str) -> Option<std::path::PathBuf> {
-        self.templates
-            .get(name)
-            .map(|string| Path::new(string).to_path_buf())
+    pub fn get(&self, name: &str) -> Option<&Template> {
+        self.templates.iter().find(|t| t.name == name)
     }
 
-    pub fn template_names_sorted(&self) -> Vec<String> {
-        self.templates.keys().cloned().collect()
+    pub fn templates_sorted(&self) -> Vec<&Template> {
+        let mut sorted: Vec<&Template> = self.templates.iter().collect();
+        sorted.sort_by(|a, b| a.name.cmp(&b.name));
+        sorted
     }
 }
 
@@ -117,7 +133,7 @@ mod tests {
         let temp = tempfile::tempdir().unwrap();
         let path = temp.path().join("nonexistent.json");
         let registry = Registry::load_from_path(&path).unwrap();
-        assert_eq!(registry.version, 1);
+        assert_eq!(registry.version, 2);
         assert!(registry.templates.is_empty());
     }
 
@@ -126,24 +142,47 @@ mod tests {
         let temp = tempfile::tempdir().unwrap();
         let path = temp.path().join("templates.json");
         let mut registry = Registry::new();
-        registry
-            .templates
-            .insert("foo".into(), "/path/to/foo".into());
+        registry.templates.push(Template {
+            name: "foo".into(),
+            location: "/path/to/foo".into(),
+            description: None,
+            commit: None,
+            pre_init: None,
+            post_init: None,
+        });
         registry.save_to_path(&path).unwrap();
         let loaded = Registry::load_from_path(&path).unwrap();
-        assert_eq!(loaded.templates.get("foo").unwrap(), "/path/to/foo");
+        assert_eq!(loaded.templates[0].location, "/path/to/foo");
     }
 
     #[test]
     fn rejects_version_mismatch() {
         let temp = tempfile::tempdir().unwrap();
         let path = temp.path().join("templates.json");
-        std::fs::write(&path, r#"{"version": 99, "templates": {}}"#).unwrap();
+        std::fs::write(&path, r#"{"version": 99, "templates": []}"#).unwrap();
         let result = Registry::load_from_path(&path);
         assert!(result.is_err());
         assert!(matches!(
             result.unwrap_err().downcast_ref::<TemplativeError>(),
-            Some(TemplativeError::UnsupportedRegistryVersion)
+            Some(TemplativeError::UnsupportedRegistryVersion { .. })
         ));
+    }
+
+    #[test]
+    fn skips_none_fields_in_json() {
+        let temp = tempfile::tempdir().unwrap();
+        let path = temp.path().join("templates.json");
+        let mut registry = Registry::new();
+        registry.templates.push(Template {
+            name: "foo".into(),
+            location: "/path".into(),
+            description: None,
+            commit: None,
+            pre_init: None,
+            post_init: None,
+        });
+        registry.save_to_path(&path).unwrap();
+        let contents = std::fs::read_to_string(&path).unwrap();
+        assert!(!contents.contains("null"));
     }
 }

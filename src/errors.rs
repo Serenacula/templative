@@ -20,8 +20,12 @@ pub enum TemplativeError {
     #[error("symlinks not supported yet")]
     SymlinkNotSupported,
 
-    #[error("unsupported registry version (expected 1)")]
-    UnsupportedRegistryVersion,
+    #[error("unsupported registry version {found} (expected {expected}); delete {path} to start fresh")]
+    UnsupportedRegistryVersion {
+        found: u32,
+        expected: u32,
+        path: String,
+    },
 
     #[error("unsupported config version (expected 1)")]
     UnsupportedConfigVersion,

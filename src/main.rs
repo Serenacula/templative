@@ -40,6 +40,9 @@ enum Command {
         /// Template name (default: basename of path)
         #[arg(short, long)]
         name: Option<String>,
+        /// Optional description
+        #[arg(short, long)]
+        description: Option<String>,
     },
     /// Remove a template from the registry
     Remove {
@@ -58,7 +61,7 @@ fn run() -> Result<()> {
             template_name,
             target_path,
         } => ops::cmd_init(config, template_name, target_path),
-        Command::Add { path, name } => ops::cmd_add(config, path, name),
+        Command::Add { path, name, description } => ops::cmd_add(config, path, name, description),
         Command::Remove { template_name } => ops::cmd_remove(config, template_name),
         Command::List => ops::cmd_list(config),
     }
