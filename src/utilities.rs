@@ -34,6 +34,19 @@ pub fn is_dangerous_path(path: &std::path::Path) -> bool {
     path == std::path::Path::new("/") || home.as_deref().map_or(false, |home_dir| path == home_dir)
 }
 
+pub fn run_hook(command: &str, working_dir: &std::path::Path) -> Result<()> {
+    let output = std::process::Command::new("sh")
+        .args(["-c", command])
+        .current_dir(working_dir)
+        .output()
+        .context("failed to execute hook")?;
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        anyhow::bail!("hook failed: {}", stderr.trim());
+    }
+    Ok(())
+}
+
 pub fn is_dir_empty(path: &std::path::Path) -> Result<bool> {
     let mut entries = std::fs::read_dir(path)
         .with_context(|| format!("failed to read directory: {}", path.display()))?;

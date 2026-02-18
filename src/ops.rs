@@ -150,6 +150,10 @@ pub fn cmd_init(config: Config, template_name: String, target_path: PathBuf, git
         .into());
     }
 
+    if let Some(ref cmd) = resolved.pre_init {
+        utilities::run_hook(cmd, &target_canonical)?;
+    }
+
     if !utilities::is_dir_empty(&target_canonical)? {
         return Err(TemplativeError::TargetNotEmpty.into());
     }
@@ -157,6 +161,12 @@ pub fn cmd_init(config: Config, template_name: String, target_path: PathBuf, git
     fs_copy::copy_template(&template_path, &target_canonical)?;
     if resolved.git {
         git::init_and_commit(&target_canonical, &template_name)?;
+    }
+
+    if let Some(ref cmd) = resolved.post_init {
+        if let Err(err) = utilities::run_hook(cmd, &target_canonical) {
+            eprintln!("warning: post-init hook failed: {:#}", err);
+        }
     }
 
     println!(
