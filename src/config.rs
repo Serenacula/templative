@@ -10,15 +10,20 @@ use crate::utilities;
 const CONFIG_VERSION: u32 = 1;
 const CONFIG_FILENAME: &str = "config.json";
 
+fn default_true() -> bool {
+    true
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Config {
     pub version: u32,
-    // Settings added here as features land.
+    #[serde(default = "default_true")]
+    pub git: bool,
 }
 
 impl Config {
     pub fn new() -> Self {
-        Self { version: CONFIG_VERSION }
+        Self { version: CONFIG_VERSION, git: true }
     }
 
     pub fn load() -> Result<Self> {

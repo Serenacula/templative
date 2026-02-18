@@ -14,6 +14,8 @@ pub struct Template {
     pub name: String,
     pub location: String,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub git: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub commit: Option<String>,
@@ -149,6 +151,7 @@ mod tests {
         registry.templates.push(Template {
             name: "foo".into(),
             location: "/path/to/foo".into(),
+            git: None,
             description: None,
             commit: None,
             pre_init: None,
@@ -180,6 +183,7 @@ mod tests {
         registry.templates.push(Template {
             name: "foo".into(),
             location: "/path".into(),
+            git: None,
             description: None,
             commit: None,
             pre_init: None,

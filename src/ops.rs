@@ -11,7 +11,7 @@ use crate::registry::{Registry, Template};
 use crate::resolved::ResolvedOptions;
 use crate::utilities;
 
-pub fn cmd_add(_config: Config, path: PathBuf, name: Option<String>, description: Option<String>) -> Result<()> {
+pub fn cmd_add(_config: Config, path: PathBuf, name: Option<String>, description: Option<String>, git: Option<bool>) -> Result<()> {
     let canonical = path
         .canonicalize()
         .with_context(|| format!("path not found or not absolute: {}", path.display()))?;
@@ -25,6 +25,7 @@ pub fn cmd_add(_config: Config, path: PathBuf, name: Option<String>, description
     let template = Template {
         name: template_name.clone(),
         location: location.clone(),
+        git,
         description,
         commit: None,
         pre_init: None,
@@ -69,12 +70,13 @@ pub fn cmd_change(
     name: Option<String>,
     description: Option<String>,
     location: Option<PathBuf>,
+    git: Option<Option<bool>>,
     commit: Option<String>,
     pre_init: Option<String>,
     post_init: Option<String>,
 ) -> Result<()> {
     if name.is_none() && description.is_none() && location.is_none()
-        && commit.is_none() && pre_init.is_none() && post_init.is_none()
+        && git.is_none() && commit.is_none() && pre_init.is_none() && post_init.is_none()
     {
         anyhow::bail!("no changes specified");
     }
@@ -93,6 +95,7 @@ pub fn cmd_change(
 
     if let Some(new_name) = name { template.name = new_name; }
     if let Some(new_description) = description { template.description = Some(new_description); }
+    if let Some(new_git) = git { template.git = new_git; }
     if let Some(new_location) = location {
         let canonical = new_location
             .canonicalize()
@@ -108,7 +111,7 @@ pub fn cmd_change(
     Ok(())
 }
 
-pub fn cmd_init(_config: Config, template_name: String, target_path: PathBuf) -> Result<()> {
+pub fn cmd_init(_config: Config, template_name: String, target_path: PathBuf, git_flag: Option<bool>) -> Result<()> {
     let registry = Registry::load()?;
     let template = registry
         .get(&template_name)
@@ -117,7 +120,7 @@ pub fn cmd_init(_config: Config, template_name: String, target_path: PathBuf) ->
         })
         .with_context(|| "run 'templative list' to see available templates")?;
 
-    let _resolved = ResolvedOptions::build(&_config, template);
+    let resolved = ResolvedOptions::build(&_config, template, git_flag);
     let template_path = PathBuf::from(&template.location);
 
     if !template_path.exists() {
@@ -153,7 +156,9 @@ pub fn cmd_init(_config: Config, template_name: String, target_path: PathBuf) ->
     }
 
     fs_copy::copy_template(&template_path, &target_canonical)?;
-    git::init_and_commit(&target_canonical, &template_name)?;
+    if resolved.git {
+        git::init_and_commit(&target_canonical, &template_name)?;
+    }
 
     println!(
         "created {} from {}",
