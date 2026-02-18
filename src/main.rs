@@ -106,22 +106,63 @@ fn run() -> Result<()> {
     let cli = Cli::parse();
     let config = config::Config::load()?;
     match cli.command {
-        Command::Init { template_name, target_path, git, no_git } => {
-            let git_flag = if git { Some(true) } else if no_git { Some(false) } else { None };
+        Command::Init {
+            template_name,
+            target_path,
+            git,
+            no_git,
+        } => {
+            let git_flag = if git {
+                Some(true)
+            } else if no_git {
+                Some(false)
+            } else {
+                None
+            };
             ops::cmd_init(config, template_name, target_path, git_flag)
         }
-        Command::Add { path, name, description, git, no_git } => {
-            let git_flag = if git { Some(true) } else if no_git { Some(false) } else { None };
+        Command::Add {
+            path,
+            name,
+            description,
+            git,
+            no_git,
+        } => {
+            let git_flag = if git {
+                Some(true)
+            } else if no_git {
+                Some(false)
+            } else {
+                None
+            };
             ops::cmd_add(path, name, description, git_flag)
         }
         Command::Remove { template_name } => ops::cmd_remove(template_name),
-        Command::Change { template_name, name, description, location, git, commit, pre_init, post_init } => {
+        Command::Change {
+            template_name,
+            name,
+            description,
+            location,
+            git,
+            commit,
+            pre_init,
+            post_init,
+        } => {
             let git_override = git.map(|g| match g {
                 GitOverride::Yes => Some(true),
                 GitOverride::No => Some(false),
                 GitOverride::Unset => None,
             });
-            ops::cmd_change(template_name, name, description, location, git_override, commit, pre_init, post_init)
+            ops::cmd_change(
+                template_name,
+                name,
+                description,
+                location,
+                git_override,
+                commit,
+                pre_init,
+                post_init,
+            )
         }
         Command::List => ops::cmd_list(),
     }
