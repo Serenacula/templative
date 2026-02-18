@@ -22,3 +22,48 @@ impl ResolvedOptions {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn make_config(git: bool) -> Config {
+        Config { version: 1, git }
+    }
+
+    fn make_template(git: Option<bool>) -> Template {
+        Template {
+            name: "test".into(),
+            location: "/tmp".into(),
+            git,
+            description: None,
+            commit: None,
+            pre_init: None,
+            post_init: None,
+        }
+    }
+
+    #[test]
+    fn flag_overrides_template_and_config() {
+        let resolved = ResolvedOptions::build(&make_config(true), &make_template(Some(true)), Some(false));
+        assert!(!resolved.git);
+    }
+
+    #[test]
+    fn template_overrides_config() {
+        let resolved = ResolvedOptions::build(&make_config(true), &make_template(Some(false)), None);
+        assert!(!resolved.git);
+    }
+
+    #[test]
+    fn config_used_when_no_flag_or_template() {
+        let resolved = ResolvedOptions::build(&make_config(false), &make_template(None), None);
+        assert!(!resolved.git);
+    }
+
+    #[test]
+    fn defaults_to_true_with_default_config() {
+        let resolved = ResolvedOptions::build(&make_config(true), &make_template(None), None);
+        assert!(resolved.git);
+    }
+}
