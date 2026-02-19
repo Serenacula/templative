@@ -103,6 +103,10 @@ pub fn cmd_list() -> Result<()> {
         format!("{}{}", s.underline(), " ".repeat(w.saturating_sub(s.width())))
     };
 
+    let truecolor = std::env::var("COLORTERM")
+        .map(|v| v == "truecolor" || v == "24bit")
+        .unwrap_or(false);
+
     let show_status = rows.iter().any(|r| !r.status.is_empty());
     let show_desc   = rows.iter().any(|r| !r.desc.is_empty());
 
@@ -124,7 +128,7 @@ pub fn cmd_list() -> Result<()> {
 
         let mut out = match row.style {
             Style::Normal     => name_col,
-            Style::Yellow     => format!("{}", name_col.yellow()),
+            Style::Yellow     => if truecolor { format!("{}", name_col.truecolor(252, 221, 42)) } else { format!("{}", name_col.yellow()) },
             Style::Blue       => format!("{}", name_col.blue()),
             Style::Red        => format!("{}", name_col.red()),
             Style::RedThrough => format!("{}", name_col.red().strikethrough()),
@@ -132,7 +136,7 @@ pub fn cmd_list() -> Result<()> {
         if show_status {
             let styled_status = match row.style {
                 Style::Normal     => status_col,
-                Style::Yellow     => format!("{}", status_col.yellow()),
+                Style::Yellow     => if truecolor { format!("{}", status_col.truecolor(252, 221, 42)) } else { format!("{}", status_col.yellow()) },
                 Style::Blue       => format!("{}", status_col.blue()),
                 Style::Red        => format!("{}", status_col.red()),
                 Style::RedThrough => format!("{}", status_col.red().strikethrough()),
