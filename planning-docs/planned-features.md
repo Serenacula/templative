@@ -50,14 +50,14 @@
 -   no-colour flag
     -   Removes underline too
 -   Add git & no-git flags
--   Support symlinks
-    -   This should create a new symlink
--   Add flags symlink & resolvesymlink
-    -   Symlink is default behaviour, creating a new symlink
-        -   If inside the template, keep a relative symlink
-        -   Else if outside the template, make it absolute
-        -   If the file cannot be found, print non-breaking warning!
+-   Support symlinks, creating a new one
+    -   If resolves inside the template, keep a relative symlink
+    -   Else if resolves outside the template, make it absolute
+    -   If the file cannot be found, print non-breaking warning! But still create the symlink
+-   Add flag resolvesymlink
+    -   Not resolving is default behaviour, create a new symlink
     -   resolvesymlink instead creates whatever is on the other end of the symlink
+        -   Make absolutely sure there's no chance of recursion first
         -   Add a warning that this feature is experimental
 -   Configure write instructions:
     -   Strict no overwrite (default): error if directory is not empty
