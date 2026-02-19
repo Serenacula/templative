@@ -62,7 +62,6 @@ mod tests {
             location: "/tmp".into(),
             git,
             description: None,
-            commit: None,
             pre_init: None,
             post_init: None,
             git_ref: None,

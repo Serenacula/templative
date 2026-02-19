@@ -145,12 +145,6 @@ enum Command {
         /// Git mode: fresh, preserve, no-git, or unset to remove override
         #[arg(long)]
         git: Option<GitModeChangeArg>,
-        /// Pin to a specific commit
-        #[arg(long)]
-        commit: Option<String>,
-        /// Clear the pinned commit
-        #[arg(long = "unset-commit")]
-        unset_commit: bool,
         /// Pre-init hook command
         #[arg(long = "pre-init")]
         pre_init: Option<String>,
@@ -240,8 +234,6 @@ fn run() -> Result<()> {
             description,
             location,
             git,
-            commit,
-            unset_commit,
             pre_init,
             unset_pre_init,
             post_init,
@@ -284,7 +276,6 @@ fn run() -> Result<()> {
                 description,
                 location,
                 git: git_override,
-                commit: if unset_commit { Some(None) } else { commit.map(Some) },
                 pre_init: if unset_pre_init { Some(None) } else { pre_init.map(Some) },
                 post_init: if unset_post_init { Some(None) } else { post_init.map(Some) },
                 git_ref: if unset_git_ref { Some(None) } else { git_ref.map(Some) },

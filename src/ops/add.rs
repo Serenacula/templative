@@ -46,7 +46,6 @@ pub fn cmd_add(
         location: location.clone(),
         git,
         description,
-        commit: None,
         pre_init: None,
         post_init: None,
         git_ref,

@@ -19,10 +19,7 @@ struct Row {
 }
 
 fn git_ref_status(tmpl: &Template, path: &PathBuf, is_url: bool) -> Option<(String, Style)> {
-    let ref_val = tmpl.commit.as_deref().or(tmpl.git_ref.as_deref())?;
-    if tmpl.commit.is_some() {
-        return Some((format!("(at git commit {})", ref_val), Style::Blue));
-    }
+    let ref_val = tmpl.git_ref.as_deref()?;
     let repo = if is_url {
         utilities::cache_path_for_url(&tmpl.location).ok()
             .filter(|cache_path| cache_path.join(".git").exists())

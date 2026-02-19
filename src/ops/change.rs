@@ -11,7 +11,6 @@ pub struct ChangeOptions {
     pub description: Option<String>,
     pub location: Option<PathBuf>,
     pub git: Option<Option<GitMode>>,
-    pub commit: Option<Option<String>>,
     pub pre_init: Option<Option<String>>,
     pub post_init: Option<Option<String>>,
     pub git_ref: Option<Option<String>>,
@@ -26,7 +25,6 @@ impl ChangeOptions {
             && self.description.is_none()
             && self.location.is_none()
             && self.git.is_none()
-            && self.commit.is_none()
             && self.pre_init.is_none()
             && self.post_init.is_none()
             && self.git_ref.is_none()
@@ -63,7 +61,6 @@ pub fn cmd_change(template_name: String, options: ChangeOptions) -> Result<()> {
             .with_context(|| format!("path not found: {}", new_location.display()))?;
         template.location = canonical.to_string_lossy().into_owned();
     }
-    if let Some(new_commit) = options.commit { template.commit = new_commit; }
     if let Some(new_pre_init) = options.pre_init { template.pre_init = new_pre_init; }
     if let Some(new_post_init) = options.post_init { template.post_init = new_post_init; }
     if let Some(new_git_ref) = options.git_ref { template.git_ref = new_git_ref; }
