@@ -17,10 +17,11 @@ pub fn cmd_change(
     post_init: Option<String>,
     git_ref: Option<String>,
     no_cache: Option<Option<bool>>,
+    exclude: Option<Option<Vec<String>>>,
 ) -> Result<()> {
     if name.is_none() && description.is_none() && location.is_none()
         && git.is_none() && commit.is_none() && pre_init.is_none() && post_init.is_none()
-        && git_ref.is_none() && no_cache.is_none()
+        && git_ref.is_none() && no_cache.is_none() && exclude.is_none()
     {
         anyhow::bail!("no changes specified");
     }
@@ -51,6 +52,7 @@ pub fn cmd_change(
     if let Some(new_post_init) = post_init { template.post_init = Some(new_post_init); }
     if let Some(new_git_ref) = git_ref { template.git_ref = Some(new_git_ref); }
     if let Some(new_no_cache) = no_cache { template.no_cache = new_no_cache; }
+    if let Some(new_exclude) = exclude { template.exclude = new_exclude; }
 
     registry.save()?;
     println!("updated {}", template_name);

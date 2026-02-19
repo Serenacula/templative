@@ -13,10 +13,15 @@ pub struct ResolvedOptions {
     pub no_cache: bool,
     pub git_ref: Option<String>,
     pub update_on_init: UpdateOnInit,
+    pub exclude: Vec<String>,
 }
 
 impl ResolvedOptions {
     pub fn build(config: &Config, template: &Template, git_flag: Option<GitMode>) -> Self {
+        let mut exclude = config.exclude.clone();
+        if let Some(ref template_exclude) = template.exclude {
+            exclude.extend(template_exclude.iter().cloned());
+        }
         Self {
             git: git_flag.or_else(|| template.git.clone()).unwrap_or_else(|| config.git.clone()),
             commit: template.commit.clone(),
@@ -25,6 +30,7 @@ impl ResolvedOptions {
             no_cache: template.no_cache.unwrap_or(config.no_cache),
             git_ref: template.git_ref.clone(),
             update_on_init: config.update_on_init.clone(),
+            exclude,
         }
     }
 }
@@ -34,7 +40,13 @@ mod tests {
     use super::*;
 
     fn make_config(git: GitMode) -> Config {
-        Config { version: 1, git, update_on_init: UpdateOnInit::OnlyUrl, no_cache: false }
+        Config {
+            version: 1,
+            git,
+            update_on_init: UpdateOnInit::OnlyUrl,
+            no_cache: false,
+            exclude: vec!["node_modules".into(), ".DS_Store".into()],
+        }
     }
 
     fn make_template(git: Option<GitMode>) -> Template {
@@ -48,6 +60,7 @@ mod tests {
             post_init: None,
             git_ref: None,
             no_cache: None,
+            exclude: None,
         }
     }
 
@@ -131,5 +144,24 @@ mod tests {
         config.update_on_init = UpdateOnInit::Never;
         let resolved = ResolvedOptions::build(&config, &make_template(None), None);
         assert_eq!(resolved.update_on_init, UpdateOnInit::Never);
+    }
+
+    #[test]
+    fn template_exclude_extends_config_exclude() {
+        let config = make_config(GitMode::Fresh);
+        let mut template = make_template(None);
+        template.exclude = Some(vec!["dist".into(), "*.log".into()]);
+        let resolved = ResolvedOptions::build(&config, &template, None);
+        assert!(resolved.exclude.contains(&"node_modules".to_string()));
+        assert!(resolved.exclude.contains(&".DS_Store".to_string()));
+        assert!(resolved.exclude.contains(&"dist".to_string()));
+        assert!(resolved.exclude.contains(&"*.log".to_string()));
+    }
+
+    #[test]
+    fn none_template_exclude_uses_config_list() {
+        let config = make_config(GitMode::Fresh);
+        let resolved = ResolvedOptions::build(&config, &make_template(None), None);
+        assert_eq!(resolved.exclude, vec!["node_modules", ".DS_Store"]);
     }
 }

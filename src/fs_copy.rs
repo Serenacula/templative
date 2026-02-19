@@ -2,43 +2,56 @@ use std::fs;
 use std::path::Path;
 
 use anyhow::{Context, Result};
+use globset::{Glob, GlobSet, GlobSetBuilder};
 use walkdir::{DirEntry, WalkDir};
 
 use crate::errors::TemplativeError;
 
-const EXCLUDE_DIRS: &[&str] = &[".git", "node_modules"];
-const EXCLUDE_FILES: &[&str] = &[".DS_Store"];
+fn build_globset(patterns: &[String]) -> Result<GlobSet> {
+    let mut builder = GlobSetBuilder::new();
+    for pattern in patterns {
+        builder.add(
+            Glob::new(pattern)
+                .with_context(|| format!("invalid exclude pattern: {}", pattern))?,
+        );
+    }
+    builder.build().context("failed to build exclude patterns")
+}
 
-/// Returns true if this entry (or its path) should be skipped (excluded). Does not check symlinks.
-fn should_skip_entry(entry: &DirEntry, source_root: &Path) -> bool {
+/// Returns true if this entry (or its path) should be skipped.
+/// `.git` is always excluded. Each path component and the full relative path
+/// are checked against `globset`.
+fn should_skip_entry(entry: &DirEntry, source_root: &Path, globset: &GlobSet) -> bool {
     let relative = match entry.path().strip_prefix(source_root) {
         Ok(rel) => rel,
         Err(_) => return false,
     };
     for component in relative.components() {
         let part = component.as_os_str().to_string_lossy();
-        if EXCLUDE_DIRS.contains(&part.as_ref()) {
+        if part == ".git" {
+            return true;
+        }
+        if globset.is_match(part.as_ref()) {
             return true;
         }
     }
-    if entry.file_type().is_file() {
-        let name = entry.file_name().to_string_lossy();
-        if EXCLUDE_FILES.contains(&name.as_ref()) {
-            return true;
-        }
+    if globset.is_match(relative) {
+        return true;
     }
     false
 }
 
-/// Copy template from source_dir to dest_dir.
-/// Excludes .git, node_modules, .DS_Store. Errors on symlinks.
-/// Preserves file permissions.
-pub fn copy_template(source_dir: &Path, dest_dir: &Path) -> Result<()> {
+/// Copy template from `source_dir` to `dest_dir`.
+/// `.git` is always excluded. `exclude` patterns are matched against each path
+/// component and the full relative path. Errors on symlinks. Preserves file permissions.
+pub fn copy_template(source_dir: &Path, dest_dir: &Path, exclude: &[String]) -> Result<()> {
     if !source_dir.is_dir() {
         anyhow::bail!("source is not a directory: {}", source_dir.display());
     }
     fs::create_dir_all(dest_dir)
         .with_context(|| format!("failed to create destination: {}", dest_dir.display()))?;
+
+    let globset = build_globset(exclude)?;
 
     let walker = WalkDir::new(source_dir)
         .follow_links(false)
@@ -48,7 +61,7 @@ pub fn copy_template(source_dir: &Path, dest_dir: &Path) -> Result<()> {
             if path == source_dir {
                 return true;
             }
-            !should_skip_entry(entry, source_dir)
+            !should_skip_entry(entry, source_dir, &globset)
         });
 
     for entry in walker {
@@ -90,6 +103,10 @@ mod tests {
     use std::fs;
     use std::path::Path;
 
+    fn default_exclude() -> Vec<String> {
+        vec!["node_modules".into(), ".DS_Store".into()]
+    }
+
     fn create_template_structure(dir: &Path) {
         fs::create_dir_all(dir.join("src")).unwrap();
         fs::create_dir_all(dir.join(".git")).unwrap();
@@ -111,7 +128,7 @@ mod tests {
         fs::create_dir_all(&source).unwrap();
         create_template_structure(&source);
 
-        copy_template(&source, &dest).unwrap();
+        copy_template(&source, &dest, &default_exclude()).unwrap();
 
         assert!(dest.join("src/main.rs").exists());
         assert!(dest.join("Cargo.toml").exists());
@@ -132,7 +149,7 @@ mod tests {
         #[cfg(unix)]
         std::os::unix::fs::symlink(source.join("file.txt"), source.join("link.txt")).unwrap();
 
-        let result = copy_template(&source, &dest);
+        let result = copy_template(&source, &dest, &default_exclude());
         #[cfg(unix)]
         assert!(result.is_err());
         #[cfg(unix)]
@@ -142,5 +159,52 @@ mod tests {
         ));
         #[cfg(not(unix))]
         let _ = result;
+    }
+
+    #[test]
+    fn glob_pattern_excludes_matching_files() {
+        let temp = tempfile::tempdir().unwrap();
+        let source = temp.path().join("template");
+        let dest = temp.path().join("dest");
+        fs::create_dir_all(&source).unwrap();
+        fs::write(source.join("main.rs"), "fn main() {}").unwrap();
+        fs::write(source.join("debug.log"), "log content").unwrap();
+        fs::write(source.join("error.log"), "error content").unwrap();
+
+        copy_template(&source, &dest, &["*.log".into()]).unwrap();
+
+        assert!(dest.join("main.rs").exists());
+        assert!(!dest.join("debug.log").exists());
+        assert!(!dest.join("error.log").exists());
+    }
+
+    #[test]
+    fn glob_pattern_excludes_directory_tree() {
+        let temp = tempfile::tempdir().unwrap();
+        let source = temp.path().join("template");
+        let dest = temp.path().join("dest");
+        fs::create_dir_all(source.join("dist")).unwrap();
+        fs::write(source.join("index.html"), "hello").unwrap();
+        fs::write(source.join("dist/bundle.js"), "bundle").unwrap();
+
+        copy_template(&source, &dest, &["dist".into()]).unwrap();
+
+        assert!(dest.join("index.html").exists());
+        assert!(!dest.join("dist").exists());
+    }
+
+    #[test]
+    fn git_always_excluded_with_empty_exclude_list() {
+        let temp = tempfile::tempdir().unwrap();
+        let source = temp.path().join("template");
+        let dest = temp.path().join("dest");
+        fs::create_dir_all(source.join(".git")).unwrap();
+        fs::write(source.join("file.txt"), "content").unwrap();
+        fs::write(source.join(".git/config"), "[core]").unwrap();
+
+        copy_template(&source, &dest, &[]).unwrap();
+
+        assert!(dest.join("file.txt").exists());
+        assert!(!dest.join(".git").exists());
     }
 }

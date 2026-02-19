@@ -14,6 +14,7 @@ pub fn cmd_add(
     git: Option<GitMode>,
     git_ref: Option<String>,
     no_cache: Option<bool>,
+    exclude: Vec<String>,
 ) -> Result<()> {
     let (location, template_name) = if utilities::is_git_url(&path) {
         git_cache::ensure_cached(&path)?;
@@ -49,6 +50,7 @@ pub fn cmd_add(
         post_init: None,
         git_ref,
         no_cache,
+        exclude: if exclude.is_empty() { None } else { Some(exclude) },
     };
     let mut registry = Registry::load()?;
     registry.add(template)?;

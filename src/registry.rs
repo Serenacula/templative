@@ -28,6 +28,8 @@ pub struct Template {
     pub git_ref: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub no_cache: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub exclude: Option<Vec<String>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -153,6 +155,7 @@ mod tests {
             post_init: None,
             git_ref: None,
             no_cache: None,
+            exclude: None,
         }
     }
 

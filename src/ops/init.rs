@@ -105,7 +105,7 @@ pub fn cmd_init(
 
     match resolved.git {
         GitMode::Fresh => {
-            fs_copy::copy_template(&template_path, &target_canonical)?;
+            fs_copy::copy_template(&template_path, &target_canonical, &resolved.exclude)?;
             git::init_and_commit(&target_canonical, &template_name)?;
         }
         GitMode::Preserve => {
@@ -115,7 +115,7 @@ pub fn cmd_init(
             }
         }
         GitMode::NoGit => {
-            fs_copy::copy_template(&template_path, &target_canonical)?;
+            fs_copy::copy_template(&template_path, &target_canonical, &resolved.exclude)?;
         }
     }
 

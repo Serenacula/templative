@@ -88,6 +88,9 @@ enum Command {
         /// Skip cache; clone fresh on each init
         #[arg(long = "no-cache")]
         no_cache: bool,
+        /// Additional patterns to exclude during init (e.g. dist *.log)
+        #[arg(long, num_args = 0..)]
+        exclude: Vec<String>,
     },
     /// Remove a template from the registry
     Remove {
@@ -125,6 +128,12 @@ enum Command {
         /// Set no-cache behaviour (true/false/none)
         #[arg(long = "no-cache")]
         no_cache: Option<NoCacheOverride>,
+        /// Replace template-level exclude patterns (e.g. --exclude dist --exclude "*.log")
+        #[arg(long, num_args = 1..)]
+        exclude: Vec<String>,
+        /// Clear all template-level exclude patterns
+        #[arg(long = "clear-exclude")]
+        clear_exclude: bool,
     },
     /// List registered templates and their paths
     List,
@@ -157,10 +166,11 @@ fn run() -> Result<()> {
             git,
             git_ref,
             no_cache,
+            exclude,
         } => {
             let git_flag = git.map(git_mode_arg_to_mode);
             let no_cache_flag = if no_cache { Some(true) } else { None };
-            ops::cmd_add(path, name, description, git_flag, git_ref, no_cache_flag)
+            ops::cmd_add(path, name, description, git_flag, git_ref, no_cache_flag, exclude)
         }
         Command::Remove { template_name } => ops::cmd_remove(template_name),
         Command::Change {
@@ -174,6 +184,8 @@ fn run() -> Result<()> {
             post_init,
             git_ref,
             no_cache,
+            exclude,
+            clear_exclude,
         } => {
             let git_override = git.map(|git_arg| match git_arg {
                 GitModeChangeArg::Fresh => Some(GitMode::Fresh),
@@ -186,6 +198,13 @@ fn run() -> Result<()> {
                 NoCacheOverride::No => Some(false),
                 NoCacheOverride::Unset => None,
             });
+            let exclude_change = if clear_exclude {
+                Some(None)
+            } else if !exclude.is_empty() {
+                Some(Some(exclude))
+            } else {
+                None
+            };
             ops::cmd_change(
                 template_name,
                 name,
@@ -197,6 +216,7 @@ fn run() -> Result<()> {
                 post_init,
                 git_ref,
                 no_cache_override,
+                exclude_change,
             )
         }
         Command::List => ops::cmd_list(),

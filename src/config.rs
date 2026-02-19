@@ -22,6 +22,10 @@ fn default_git_mode() -> GitMode {
     GitMode::Fresh
 }
 
+fn default_exclude() -> Vec<String> {
+    vec!["node_modules".into(), ".DS_Store".into()]
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "kebab-case")]
 pub enum UpdateOnInit {
@@ -43,6 +47,8 @@ pub struct Config {
     pub update_on_init: UpdateOnInit,
     #[serde(default)]
     pub no_cache: bool,
+    #[serde(default = "default_exclude")]
+    pub exclude: Vec<String>,
 }
 
 impl Config {
@@ -52,6 +58,7 @@ impl Config {
             git: GitMode::Fresh,
             update_on_init: UpdateOnInit::OnlyUrl,
             no_cache: false,
+            exclude: default_exclude(),
         }
     }
 
@@ -178,6 +185,7 @@ mod tests {
             git: GitMode::Preserve,
             update_on_init: UpdateOnInit::Always,
             no_cache: true,
+            exclude: vec!["dist".into()],
         };
         config.save_to_path(&path).unwrap();
         let loaded = Config::load_from_path(&path).unwrap();
@@ -192,5 +200,29 @@ mod tests {
         let config: Config = serde_json::from_str(json).unwrap();
         assert_eq!(config.git, GitMode::NoGit);
         assert_eq!(config.update_on_init, UpdateOnInit::Never);
+    }
+
+    #[test]
+    fn default_exclude_is_node_modules_and_ds_store() {
+        let config = Config::new();
+        assert_eq!(config.exclude, vec!["node_modules", ".DS_Store"]);
+    }
+
+    #[test]
+    fn exclude_roundtrips_through_json() {
+        let temp = tempfile::tempdir().unwrap();
+        let path = temp.path().join("config.json");
+        let mut config = Config::new();
+        config.exclude = vec!["dist".into(), "*.log".into()];
+        config.save_to_path(&path).unwrap();
+        let loaded = Config::load_from_path(&path).unwrap();
+        assert_eq!(loaded.exclude, vec!["dist", "*.log"]);
+    }
+
+    #[test]
+    fn old_config_without_exclude_defaults() {
+        let json = r#"{"version":1}"#;
+        let config: Config = serde_json::from_str(json).unwrap();
+        assert_eq!(config.exclude, vec!["node_modules", ".DS_Store"]);
     }
 }
