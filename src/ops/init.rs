@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use anyhow::{Context, Result};
 
-use crate::config::{Config, GitMode, UpdateOnInit};
+use crate::config::{Config, GitMode, UpdateOnInit, WriteMode};
 use crate::errors::TemplativeError;
 use crate::fs_copy;
 use crate::git;
@@ -58,6 +58,7 @@ pub fn cmd_init(
     template_name: String,
     target_path: PathBuf,
     git_flag: Option<GitMode>,
+    write_mode_flag: Option<WriteMode>,
 ) -> Result<()> {
     let registry = Registry::load()?;
     let template = registry
@@ -67,7 +68,7 @@ pub fn cmd_init(
         })
         .with_context(|| "run 'templative list' to see available templates")?;
 
-    let resolved = ResolvedOptions::build(&config, template, git_flag);
+    let resolved = ResolvedOptions::build(&config, template, git_flag, write_mode_flag);
     let location = template.location.clone();
     let location_is_url = utilities::is_git_url(&location);
 
@@ -99,14 +100,23 @@ pub fn cmd_init(
         utilities::run_hook(cmd, &target_canonical)?;
     }
 
-    if !utilities::is_dir_empty(&target_canonical)? {
+    if resolved.write_mode == WriteMode::Strict && !utilities::is_dir_empty(&target_canonical)? {
         return Err(TemplativeError::TargetNotEmpty.into());
     }
 
     match resolved.git {
         GitMode::Fresh => {
-            fs_copy::copy_template(&template_path, &target_canonical, &resolved.exclude)?;
-            git::init_and_commit(&target_canonical, &template_name)?;
+            fs_copy::copy_template(
+                &template_path,
+                &target_canonical,
+                &resolved.exclude,
+                &resolved.write_mode,
+            )?;
+            if target_canonical.join(".git").exists() {
+                git::add_and_commit(&target_canonical, &template_name)?;
+            } else {
+                git::init_and_commit(&target_canonical, &template_name)?;
+            }
         }
         GitMode::Preserve => {
             git::clone_local(&template_path, &target_canonical)?;
@@ -115,7 +125,12 @@ pub fn cmd_init(
             }
         }
         GitMode::NoGit => {
-            fs_copy::copy_template(&template_path, &target_canonical, &resolved.exclude)?;
+            fs_copy::copy_template(
+                &template_path,
+                &target_canonical,
+                &resolved.exclude,
+                &resolved.write_mode,
+            )?;
         }
     }
 

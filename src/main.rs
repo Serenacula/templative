@@ -13,7 +13,7 @@ mod registry;
 mod resolved;
 mod utilities;
 
-use config::GitMode;
+use config::{GitMode, WriteMode};
 
 /// `--git fresh|preserve|no-git` for init and add
 #[derive(clap::ValueEnum, Clone)]
@@ -31,6 +31,31 @@ enum GitModeChangeArg {
     Preserve,
     #[value(name = "no-git")]
     NoGit,
+    Unset,
+}
+
+/// `--write-mode strict|no-overwrite|skip-overwrite|overwrite|ask`
+#[derive(clap::ValueEnum, Clone)]
+enum WriteModeArg {
+    Strict,
+    #[value(name = "no-overwrite")]
+    NoOverwrite,
+    #[value(name = "skip-overwrite")]
+    SkipOverwrite,
+    Overwrite,
+    Ask,
+}
+
+/// `--write-mode` for change (adds `unset` to clear template-level override)
+#[derive(clap::ValueEnum, Clone)]
+enum WriteModeChangeArg {
+    Strict,
+    #[value(name = "no-overwrite")]
+    NoOverwrite,
+    #[value(name = "skip-overwrite")]
+    SkipOverwrite,
+    Overwrite,
+    Ask,
     Unset,
 }
 
@@ -67,6 +92,9 @@ enum Command {
         /// Git mode: fresh (copy + new history), preserve (clone), no-git (copy only)
         #[arg(long)]
         git: Option<GitModeArg>,
+        /// Write mode: how to handle file collisions in the target directory
+        #[arg(long = "write-mode")]
+        write_mode: Option<WriteModeArg>,
     },
     /// Register a directory or git URL as a template
     Add {
@@ -91,6 +119,9 @@ enum Command {
         /// Additional patterns to exclude during init (e.g. dist *.log)
         #[arg(long, num_args = 0..)]
         exclude: Vec<String>,
+        /// Write mode: how to handle file collisions in the target directory
+        #[arg(long = "write-mode")]
+        write_mode: Option<WriteModeArg>,
     },
     /// Remove a template from the registry
     Remove {
@@ -134,6 +165,9 @@ enum Command {
         /// Clear all template-level exclude patterns
         #[arg(long = "clear-exclude")]
         clear_exclude: bool,
+        /// Write mode override, or unset to remove template-level override
+        #[arg(long = "write-mode")]
+        write_mode: Option<WriteModeChangeArg>,
     },
     /// List registered templates and their paths
     List,
@@ -147,6 +181,16 @@ fn git_mode_arg_to_mode(arg: GitModeArg) -> GitMode {
     }
 }
 
+fn write_mode_arg_to_mode(arg: WriteModeArg) -> WriteMode {
+    match arg {
+        WriteModeArg::Strict => WriteMode::Strict,
+        WriteModeArg::NoOverwrite => WriteMode::NoOverwrite,
+        WriteModeArg::SkipOverwrite => WriteMode::SkipOverwrite,
+        WriteModeArg::Overwrite => WriteMode::Overwrite,
+        WriteModeArg::Ask => WriteMode::Ask,
+    }
+}
+
 fn run() -> Result<()> {
     let cli = Cli::parse();
     let config = config::Config::load()?;
@@ -155,9 +199,11 @@ fn run() -> Result<()> {
             template_name,
             target_path,
             git,
+            write_mode,
         } => {
             let git_flag = git.map(git_mode_arg_to_mode);
-            ops::cmd_init(config, template_name, target_path, git_flag)
+            let write_mode_flag = write_mode.map(write_mode_arg_to_mode);
+            ops::cmd_init(config, template_name, target_path, git_flag, write_mode_flag)
         }
         Command::Add {
             path,
@@ -167,10 +213,12 @@ fn run() -> Result<()> {
             git_ref,
             no_cache,
             exclude,
+            write_mode,
         } => {
             let git_flag = git.map(git_mode_arg_to_mode);
             let no_cache_flag = if no_cache { Some(true) } else { None };
-            ops::cmd_add(path, name, description, git_flag, git_ref, no_cache_flag, exclude)
+            let write_mode_flag = write_mode.map(write_mode_arg_to_mode);
+            ops::cmd_add(path, name, description, git_flag, git_ref, no_cache_flag, exclude, write_mode_flag)
         }
         Command::Remove { template_name } => ops::cmd_remove(template_name),
         Command::Change {
@@ -186,6 +234,7 @@ fn run() -> Result<()> {
             no_cache,
             exclude,
             clear_exclude,
+            write_mode,
         } => {
             let git_override = git.map(|git_arg| match git_arg {
                 GitModeChangeArg::Fresh => Some(GitMode::Fresh),
@@ -205,6 +254,14 @@ fn run() -> Result<()> {
             } else {
                 None
             };
+            let write_mode_change = write_mode.map(|arg| match arg {
+                WriteModeChangeArg::Unset => None,
+                WriteModeChangeArg::Strict => Some(WriteMode::Strict),
+                WriteModeChangeArg::NoOverwrite => Some(WriteMode::NoOverwrite),
+                WriteModeChangeArg::SkipOverwrite => Some(WriteMode::SkipOverwrite),
+                WriteModeChangeArg::Overwrite => Some(WriteMode::Overwrite),
+                WriteModeChangeArg::Ask => Some(WriteMode::Ask),
+            });
             ops::cmd_change(
                 template_name,
                 name,
@@ -217,6 +274,7 @@ fn run() -> Result<()> {
                 git_ref,
                 no_cache_override,
                 exclude_change,
+                write_mode_change,
             )
         }
         Command::List => ops::cmd_list(),

@@ -38,6 +38,20 @@ fn default_update_on_init() -> UpdateOnInit {
     UpdateOnInit::OnlyUrl
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "kebab-case")]
+pub enum WriteMode {
+    Strict,
+    NoOverwrite,
+    SkipOverwrite,
+    Overwrite,
+    Ask,
+}
+
+fn default_write_mode() -> WriteMode {
+    WriteMode::Strict
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Config {
     pub version: u32,
@@ -49,6 +63,8 @@ pub struct Config {
     pub no_cache: bool,
     #[serde(default = "default_exclude")]
     pub exclude: Vec<String>,
+    #[serde(default = "default_write_mode")]
+    pub write_mode: WriteMode,
 }
 
 impl Config {
@@ -59,6 +75,7 @@ impl Config {
             update_on_init: UpdateOnInit::OnlyUrl,
             no_cache: false,
             exclude: default_exclude(),
+            write_mode: WriteMode::Strict,
         }
     }
 
@@ -186,6 +203,7 @@ mod tests {
             update_on_init: UpdateOnInit::Always,
             no_cache: true,
             exclude: vec!["dist".into()],
+            write_mode: WriteMode::Strict,
         };
         config.save_to_path(&path).unwrap();
         let loaded = Config::load_from_path(&path).unwrap();
@@ -224,5 +242,27 @@ mod tests {
         let json = r#"{"version":1}"#;
         let config: Config = serde_json::from_str(json).unwrap();
         assert_eq!(config.exclude, vec!["node_modules", ".DS_Store"]);
+    }
+
+    #[test]
+    fn default_write_mode_is_strict() {
+        let config = Config::new();
+        assert_eq!(config.write_mode, WriteMode::Strict);
+    }
+
+    #[test]
+    fn old_config_without_write_mode_defaults_to_strict() {
+        let json = r#"{"version":1}"#;
+        let config: Config = serde_json::from_str(json).unwrap();
+        assert_eq!(config.write_mode, WriteMode::Strict);
+    }
+
+    #[test]
+    fn write_mode_roundtrip() {
+        let json = r#"{"version":1,"write_mode":"skip-overwrite"}"#;
+        let config: Config = serde_json::from_str(json).unwrap();
+        assert_eq!(config.write_mode, WriteMode::SkipOverwrite);
+        let serialized = serde_json::to_string(&config).unwrap();
+        assert!(serialized.contains("skip-overwrite"));
     }
 }

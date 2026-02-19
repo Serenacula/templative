@@ -127,3 +127,10 @@ pub fn init_and_commit(target_path: &Path, template_name: &str) -> Result<()> {
     initial_commit(target_path, template_name)?;
     Ok(())
 }
+
+pub fn add_and_commit(target_path: &Path, template_name: &str) -> Result<()> {
+    check_user_config()?;
+    add_all(target_path)?;
+    initial_commit(target_path, template_name)?;
+    Ok(())
+}

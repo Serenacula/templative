@@ -1,4 +1,4 @@
-use crate::config::{Config, GitMode, UpdateOnInit};
+use crate::config::{Config, GitMode, UpdateOnInit, WriteMode};
 use crate::registry::Template;
 
 /// Merged settings for a single `init` invocation.
@@ -14,10 +14,16 @@ pub struct ResolvedOptions {
     pub git_ref: Option<String>,
     pub update_on_init: UpdateOnInit,
     pub exclude: Vec<String>,
+    pub write_mode: WriteMode,
 }
 
 impl ResolvedOptions {
-    pub fn build(config: &Config, template: &Template, git_flag: Option<GitMode>) -> Self {
+    pub fn build(
+        config: &Config,
+        template: &Template,
+        git_flag: Option<GitMode>,
+        write_mode_flag: Option<WriteMode>,
+    ) -> Self {
         let mut exclude = config.exclude.clone();
         if let Some(ref template_exclude) = template.exclude {
             exclude.extend(template_exclude.iter().cloned());
@@ -31,6 +37,9 @@ impl ResolvedOptions {
             git_ref: template.git_ref.clone(),
             update_on_init: config.update_on_init.clone(),
             exclude,
+            write_mode: write_mode_flag
+                .or_else(|| template.write_mode.clone())
+                .unwrap_or_else(|| config.write_mode.clone()),
         }
     }
 }
@@ -46,6 +55,7 @@ mod tests {
             update_on_init: UpdateOnInit::OnlyUrl,
             no_cache: false,
             exclude: vec!["node_modules".into(), ".DS_Store".into()],
+            write_mode: WriteMode::Strict,
         }
     }
 
@@ -61,6 +71,7 @@ mod tests {
             git_ref: None,
             no_cache: None,
             exclude: None,
+            write_mode: None,
         }
     }
 
@@ -70,6 +81,7 @@ mod tests {
             &make_config(GitMode::Fresh),
             &make_template(Some(GitMode::Fresh)),
             Some(GitMode::NoGit),
+            None,
         );
         assert_eq!(resolved.git, GitMode::NoGit);
     }
@@ -79,6 +91,7 @@ mod tests {
         let resolved = ResolvedOptions::build(
             &make_config(GitMode::Fresh),
             &make_template(Some(GitMode::Preserve)),
+            None,
             None,
         );
         assert_eq!(resolved.git, GitMode::Preserve);
@@ -90,6 +103,7 @@ mod tests {
             &make_config(GitMode::NoGit),
             &make_template(None),
             None,
+            None,
         );
         assert_eq!(resolved.git, GitMode::NoGit);
     }
@@ -100,6 +114,7 @@ mod tests {
             &make_config(GitMode::Fresh),
             &make_template(None),
             None,
+            None,
         );
         assert_eq!(resolved.git, GitMode::Fresh);
     }
@@ -108,7 +123,7 @@ mod tests {
     fn no_cache_resolves_from_template() {
         let mut template = make_template(None);
         template.no_cache = Some(true);
-        let resolved = ResolvedOptions::build(&make_config(GitMode::Fresh), &template, None);
+        let resolved = ResolvedOptions::build(&make_config(GitMode::Fresh), &template, None, None);
         assert!(resolved.no_cache);
     }
 
@@ -116,7 +131,7 @@ mod tests {
     fn no_cache_resolves_from_config() {
         let mut config = make_config(GitMode::Fresh);
         config.no_cache = true;
-        let resolved = ResolvedOptions::build(&config, &make_template(None), None);
+        let resolved = ResolvedOptions::build(&config, &make_template(None), None, None);
         assert!(resolved.no_cache);
     }
 
@@ -126,7 +141,7 @@ mod tests {
         config.no_cache = true;
         let mut template = make_template(None);
         template.no_cache = Some(false);
-        let resolved = ResolvedOptions::build(&config, &template, None);
+        let resolved = ResolvedOptions::build(&config, &template, None, None);
         assert!(!resolved.no_cache);
     }
 
@@ -134,7 +149,7 @@ mod tests {
     fn git_ref_resolves_from_template() {
         let mut template = make_template(None);
         template.git_ref = Some("v1.0".into());
-        let resolved = ResolvedOptions::build(&make_config(GitMode::Fresh), &template, None);
+        let resolved = ResolvedOptions::build(&make_config(GitMode::Fresh), &template, None, None);
         assert_eq!(resolved.git_ref.as_deref(), Some("v1.0"));
     }
 
@@ -142,7 +157,7 @@ mod tests {
     fn update_on_init_comes_from_config() {
         let mut config = make_config(GitMode::Fresh);
         config.update_on_init = UpdateOnInit::Never;
-        let resolved = ResolvedOptions::build(&config, &make_template(None), None);
+        let resolved = ResolvedOptions::build(&config, &make_template(None), None, None);
         assert_eq!(resolved.update_on_init, UpdateOnInit::Never);
     }
 
@@ -151,7 +166,7 @@ mod tests {
         let config = make_config(GitMode::Fresh);
         let mut template = make_template(None);
         template.exclude = Some(vec!["dist".into(), "*.log".into()]);
-        let resolved = ResolvedOptions::build(&config, &template, None);
+        let resolved = ResolvedOptions::build(&config, &template, None, None);
         assert!(resolved.exclude.contains(&"node_modules".to_string()));
         assert!(resolved.exclude.contains(&".DS_Store".to_string()));
         assert!(resolved.exclude.contains(&"dist".to_string()));
@@ -161,7 +176,35 @@ mod tests {
     #[test]
     fn none_template_exclude_uses_config_list() {
         let config = make_config(GitMode::Fresh);
-        let resolved = ResolvedOptions::build(&config, &make_template(None), None);
+        let resolved = ResolvedOptions::build(&config, &make_template(None), None, None);
         assert_eq!(resolved.exclude, vec!["node_modules", ".DS_Store"]);
+    }
+
+    #[test]
+    fn write_mode_flag_overrides_template_and_config() {
+        let mut config = make_config(GitMode::Fresh);
+        config.write_mode = WriteMode::Strict;
+        let mut template = make_template(None);
+        template.write_mode = Some(WriteMode::NoOverwrite);
+        let resolved = ResolvedOptions::build(&config, &template, None, Some(WriteMode::Overwrite));
+        assert_eq!(resolved.write_mode, WriteMode::Overwrite);
+    }
+
+    #[test]
+    fn write_mode_template_overrides_config() {
+        let mut config = make_config(GitMode::Fresh);
+        config.write_mode = WriteMode::Strict;
+        let mut template = make_template(None);
+        template.write_mode = Some(WriteMode::SkipOverwrite);
+        let resolved = ResolvedOptions::build(&config, &template, None, None);
+        assert_eq!(resolved.write_mode, WriteMode::SkipOverwrite);
+    }
+
+    #[test]
+    fn write_mode_config_used_when_neither_set() {
+        let mut config = make_config(GitMode::Fresh);
+        config.write_mode = WriteMode::NoOverwrite;
+        let resolved = ResolvedOptions::build(&config, &make_template(None), None, None);
+        assert_eq!(resolved.write_mode, WriteMode::NoOverwrite);
     }
 }

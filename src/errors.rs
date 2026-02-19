@@ -29,4 +29,7 @@ pub enum TemplativeError {
 
     #[error("unsupported config version (expected 1)")]
     UnsupportedConfigVersion,
+
+    #[error("file would be overwritten: {path:?}")]
+    FileWouldBeOverwritten { path: PathBuf },
 }

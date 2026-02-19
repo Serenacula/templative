@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use anyhow::{Context, Result};
 
-use crate::config::GitMode;
+use crate::config::{GitMode, WriteMode};
 use crate::errors::TemplativeError;
 use crate::registry::Registry;
 
@@ -18,10 +18,12 @@ pub fn cmd_change(
     git_ref: Option<String>,
     no_cache: Option<Option<bool>>,
     exclude: Option<Option<Vec<String>>>,
+    write_mode: Option<Option<WriteMode>>,
 ) -> Result<()> {
     if name.is_none() && description.is_none() && location.is_none()
         && git.is_none() && commit.is_none() && pre_init.is_none() && post_init.is_none()
         && git_ref.is_none() && no_cache.is_none() && exclude.is_none()
+        && write_mode.is_none()
     {
         anyhow::bail!("no changes specified");
     }
@@ -53,6 +55,7 @@ pub fn cmd_change(
     if let Some(new_git_ref) = git_ref { template.git_ref = Some(new_git_ref); }
     if let Some(new_no_cache) = no_cache { template.no_cache = new_no_cache; }
     if let Some(new_exclude) = exclude { template.exclude = new_exclude; }
+    if let Some(new_write_mode) = write_mode { template.write_mode = new_write_mode; }
 
     registry.save()?;
     println!("updated {}", template_name);

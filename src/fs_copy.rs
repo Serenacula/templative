@@ -2,9 +2,11 @@ use std::fs;
 use std::path::Path;
 
 use anyhow::{Context, Result};
+use dialoguer::Select;
 use globset::{Glob, GlobSet, GlobSetBuilder};
 use walkdir::{DirEntry, WalkDir};
 
+use crate::config::WriteMode;
 use crate::errors::TemplativeError;
 
 fn build_globset(patterns: &[String]) -> Result<GlobSet> {
@@ -41,10 +43,41 @@ fn should_skip_entry(entry: &DirEntry, source_root: &Path, globset: &GlobSet) ->
     false
 }
 
+enum FileChoice {
+    Overwrite,
+    Skip,
+    OverwriteAll,
+    SkipAll,
+    Abort,
+}
+
+fn prompt_file(dest_path: &Path) -> Result<FileChoice> {
+    let prompt = format!("'{}' already exists. What would you like to do?", dest_path.display());
+    let options = &["Overwrite", "Skip", "Overwrite all", "Skip all", "Abort"];
+    let selection = Select::new()
+        .with_prompt(&prompt)
+        .items(options)
+        .default(0)
+        .interact()
+        .context("prompt failed")?;
+    Ok(match selection {
+        0 => FileChoice::Overwrite,
+        1 => FileChoice::Skip,
+        2 => FileChoice::OverwriteAll,
+        3 => FileChoice::SkipAll,
+        _ => FileChoice::Abort,
+    })
+}
+
 /// Copy template from `source_dir` to `dest_dir`.
 /// `.git` is always excluded. `exclude` patterns are matched against each path
 /// component and the full relative path. Errors on symlinks. Preserves file permissions.
-pub fn copy_template(source_dir: &Path, dest_dir: &Path, exclude: &[String]) -> Result<()> {
+pub fn copy_template(
+    source_dir: &Path,
+    dest_dir: &Path,
+    exclude: &[String],
+    write_mode: &WriteMode,
+) -> Result<()> {
     if !source_dir.is_dir() {
         anyhow::bail!("source is not a directory: {}", source_dir.display());
     }
@@ -52,6 +85,9 @@ pub fn copy_template(source_dir: &Path, dest_dir: &Path, exclude: &[String]) -> 
         .with_context(|| format!("failed to create destination: {}", dest_dir.display()))?;
 
     let globset = build_globset(exclude)?;
+    // `effective_mode` may be escalated from Ask to Overwrite/SkipOverwrite
+    // during the copy when the user makes a session-level policy decision.
+    let mut effective_mode = write_mode.clone();
 
     let walker = WalkDir::new(source_dir)
         .follow_links(false)
@@ -86,6 +122,32 @@ pub fn copy_template(source_dir: &Path, dest_dir: &Path, exclude: &[String]) -> 
                 fs::create_dir_all(parent)
                     .with_context(|| format!("failed to create parent: {}", parent.display()))?;
             }
+
+            if dest_path.exists() {
+                match effective_mode {
+                    WriteMode::Strict | WriteMode::Overwrite => {}
+                    WriteMode::NoOverwrite => {
+                        return Err(TemplativeError::FileWouldBeOverwritten {
+                            path: dest_path,
+                        }
+                        .into());
+                    }
+                    WriteMode::SkipOverwrite => continue,
+                    WriteMode::Ask => match prompt_file(&dest_path)? {
+                        FileChoice::Overwrite => {}
+                        FileChoice::Skip => continue,
+                        FileChoice::OverwriteAll => {
+                            effective_mode = WriteMode::Overwrite;
+                        }
+                        FileChoice::SkipAll => {
+                            effective_mode = WriteMode::SkipOverwrite;
+                            continue;
+                        }
+                        FileChoice::Abort => anyhow::bail!("aborted by user"),
+                    },
+                }
+            }
+
             fs::copy(path, &dest_path)
                 .with_context(|| format!("failed to copy {} -> {}", path.display(), dest_path.display()))?;
             if let Ok(metadata) = fs::metadata(path) {
@@ -128,7 +190,7 @@ mod tests {
         fs::create_dir_all(&source).unwrap();
         create_template_structure(&source);
 
-        copy_template(&source, &dest, &default_exclude()).unwrap();
+        copy_template(&source, &dest, &default_exclude(), &WriteMode::Strict).unwrap();
 
         assert!(dest.join("src/main.rs").exists());
         assert!(dest.join("Cargo.toml").exists());
@@ -149,7 +211,7 @@ mod tests {
         #[cfg(unix)]
         std::os::unix::fs::symlink(source.join("file.txt"), source.join("link.txt")).unwrap();
 
-        let result = copy_template(&source, &dest, &default_exclude());
+        let result = copy_template(&source, &dest, &default_exclude(), &WriteMode::Strict);
         #[cfg(unix)]
         assert!(result.is_err());
         #[cfg(unix)]
@@ -171,7 +233,7 @@ mod tests {
         fs::write(source.join("debug.log"), "log content").unwrap();
         fs::write(source.join("error.log"), "error content").unwrap();
 
-        copy_template(&source, &dest, &["*.log".into()]).unwrap();
+        copy_template(&source, &dest, &["*.log".into()], &WriteMode::Strict).unwrap();
 
         assert!(dest.join("main.rs").exists());
         assert!(!dest.join("debug.log").exists());
@@ -187,7 +249,7 @@ mod tests {
         fs::write(source.join("index.html"), "hello").unwrap();
         fs::write(source.join("dist/bundle.js"), "bundle").unwrap();
 
-        copy_template(&source, &dest, &["dist".into()]).unwrap();
+        copy_template(&source, &dest, &["dist".into()], &WriteMode::Strict).unwrap();
 
         assert!(dest.join("index.html").exists());
         assert!(!dest.join("dist").exists());
@@ -202,9 +264,61 @@ mod tests {
         fs::write(source.join("file.txt"), "content").unwrap();
         fs::write(source.join(".git/config"), "[core]").unwrap();
 
-        copy_template(&source, &dest, &[]).unwrap();
+        copy_template(&source, &dest, &[], &WriteMode::Strict).unwrap();
 
         assert!(dest.join("file.txt").exists());
         assert!(!dest.join(".git").exists());
+    }
+
+    #[test]
+    fn no_overwrite_errors_on_existing_file() {
+        let temp = tempfile::tempdir().unwrap();
+        let source = temp.path().join("template");
+        let dest = temp.path().join("dest");
+        fs::create_dir_all(&source).unwrap();
+        fs::create_dir_all(&dest).unwrap();
+        fs::write(source.join("file.txt"), "new content").unwrap();
+        fs::write(dest.join("file.txt"), "original content").unwrap();
+
+        let result = copy_template(&source, &dest, &[], &WriteMode::NoOverwrite);
+
+        assert!(result.is_err());
+        assert!(matches!(
+            result.unwrap_err().downcast_ref::<TemplativeError>(),
+            Some(TemplativeError::FileWouldBeOverwritten { .. })
+        ));
+        assert_eq!(fs::read_to_string(dest.join("file.txt")).unwrap(), "original content");
+    }
+
+    #[test]
+    fn skip_overwrite_preserves_existing_file() {
+        let temp = tempfile::tempdir().unwrap();
+        let source = temp.path().join("template");
+        let dest = temp.path().join("dest");
+        fs::create_dir_all(&source).unwrap();
+        fs::create_dir_all(&dest).unwrap();
+        fs::write(source.join("existing.txt"), "new content").unwrap();
+        fs::write(source.join("new.txt"), "brand new").unwrap();
+        fs::write(dest.join("existing.txt"), "original content").unwrap();
+
+        copy_template(&source, &dest, &[], &WriteMode::SkipOverwrite).unwrap();
+
+        assert_eq!(fs::read_to_string(dest.join("existing.txt")).unwrap(), "original content");
+        assert_eq!(fs::read_to_string(dest.join("new.txt")).unwrap(), "brand new");
+    }
+
+    #[test]
+    fn overwrite_replaces_existing_file() {
+        let temp = tempfile::tempdir().unwrap();
+        let source = temp.path().join("template");
+        let dest = temp.path().join("dest");
+        fs::create_dir_all(&source).unwrap();
+        fs::create_dir_all(&dest).unwrap();
+        fs::write(source.join("file.txt"), "new content").unwrap();
+        fs::write(dest.join("file.txt"), "original content").unwrap();
+
+        copy_template(&source, &dest, &[], &WriteMode::Overwrite).unwrap();
+
+        assert_eq!(fs::read_to_string(dest.join("file.txt")).unwrap(), "new content");
     }
 }

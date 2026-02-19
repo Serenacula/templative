@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 
-use crate::config::GitMode;
+use crate::config::{GitMode, WriteMode};
 use crate::errors::TemplativeError;
 
 const REGISTRY_VERSION: u32 = 2;
@@ -30,6 +30,8 @@ pub struct Template {
     pub no_cache: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub exclude: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub write_mode: Option<WriteMode>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -156,6 +158,7 @@ mod tests {
             git_ref: None,
             no_cache: None,
             exclude: None,
+            write_mode: None,
         }
     }
 

@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use anyhow::{Context, Result};
 
-use crate::config::GitMode;
+use crate::config::{GitMode, WriteMode};
 use crate::git_cache;
 use crate::registry::{Registry, Template};
 use crate::utilities;
@@ -15,6 +15,7 @@ pub fn cmd_add(
     git_ref: Option<String>,
     no_cache: Option<bool>,
     exclude: Vec<String>,
+    write_mode: Option<WriteMode>,
 ) -> Result<()> {
     let (location, template_name) = if utilities::is_git_url(&path) {
         git_cache::ensure_cached(&path)?;
@@ -51,6 +52,7 @@ pub fn cmd_add(
         git_ref,
         no_cache,
         exclude: if exclude.is_empty() { None } else { Some(exclude) },
+        write_mode,
     };
     let mut registry = Registry::load()?;
     registry.add(template)?;
