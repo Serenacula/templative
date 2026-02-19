@@ -7,21 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.1](https://github.com/Serenacula/templative/compare/v0.6.0...v0.6.1) - 2026-02-19
+
+### Added
+
+-   add STATUS column to list with per-state notes
+-   colour-code list rows by template state
+-   hide status and description columns when unused
+
+### Other
+
+-   split ops.rs into per-command files under src/ops/; list column order NAME STATUS DESCRIPTION LOCATION
+
 ## [0.6.0](https://github.com/Serenacula/templative/compare/v0.5.1...v0.6.0) - 2026-02-18
 
 ### Added
 
-- underline list headers
-- show description in list output with aligned columns
-- [**breaking**] merge git and fresh flags into single GitMode enum
+-   underline list headers
+-   show description in list output with aligned columns
+-   [**breaking**] merge git and fresh flags into single GitMode enum
 
 ### Fixed
 
-- underline header text only, not trailing padding
+-   underline header text only, not trailing padding
 
 ### Other
 
-- updating lock
+-   updating lock
 
 ## [0.5.1](https://github.com/Serenacula/templative/compare/v0.5.0...v0.5.1) - 2026-02-18
 
