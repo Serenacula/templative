@@ -56,7 +56,7 @@ pub fn add_all(target_path: &Path) -> Result<()> {
 }
 
 pub fn initial_commit(target_path: &Path, template_name: &str) -> Result<()> {
-    let message = format!("Initial commit from template: {}", template_name);
+    let message = format!("adding template {}", template_name);
     run_git(Some(target_path), &["commit", "-m", &message]).context("git commit failed")
 }
 

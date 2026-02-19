@@ -14,6 +14,7 @@ mod resolved;
 mod utilities;
 
 use config::{GitMode, WriteMode};
+use ops::ChangeOptions;
 
 /// `--git fresh|preserve|no-git` for init and add
 #[derive(clap::ValueEnum, Clone)]
@@ -60,7 +61,7 @@ enum WriteModeChangeArg {
 }
 
 #[derive(clap::ValueEnum, Clone)]
-enum NoCacheOverride {
+enum NoCacheArg {
     #[value(name = "true")]
     Yes,
     #[value(name = "false")]
@@ -147,18 +148,30 @@ enum Command {
         /// Pin to a specific commit
         #[arg(long)]
         commit: Option<String>,
+        /// Clear the pinned commit
+        #[arg(long = "unset-commit")]
+        unset_commit: bool,
         /// Pre-init hook command
         #[arg(long = "pre-init")]
         pre_init: Option<String>,
+        /// Clear the pre-init hook
+        #[arg(long = "unset-pre-init")]
+        unset_pre_init: bool,
         /// Post-init hook command
         #[arg(long = "post-init")]
         post_init: Option<String>,
+        /// Clear the post-init hook
+        #[arg(long = "unset-post-init")]
+        unset_post_init: bool,
         /// Pin to a specific git ref (branch, tag, or SHA)
         #[arg(long = "git-ref")]
         git_ref: Option<String>,
+        /// Clear the pinned git ref
+        #[arg(long = "unset-git-ref")]
+        unset_git_ref: bool,
         /// Set no-cache behaviour (true/false/none)
         #[arg(long = "no-cache")]
-        no_cache: Option<NoCacheOverride>,
+        no_cache: Option<NoCacheArg>,
         /// Replace template-level exclude patterns (e.g. --exclude dist --exclude "*.log")
         #[arg(long, num_args = 1..)]
         exclude: Vec<String>,
@@ -228,9 +241,13 @@ fn run() -> Result<()> {
             location,
             git,
             commit,
+            unset_commit,
             pre_init,
+            unset_pre_init,
             post_init,
+            unset_post_init,
             git_ref,
+            unset_git_ref,
             no_cache,
             exclude,
             clear_exclude,
@@ -243,9 +260,9 @@ fn run() -> Result<()> {
                 GitModeChangeArg::Unset => None,
             });
             let no_cache_override = no_cache.map(|no_cache_arg| match no_cache_arg {
-                NoCacheOverride::Yes => Some(true),
-                NoCacheOverride::No => Some(false),
-                NoCacheOverride::Unset => None,
+                NoCacheArg::Yes => Some(true),
+                NoCacheArg::No => Some(false),
+                NoCacheArg::Unset => None,
             });
             let exclude_change = if clear_exclude {
                 Some(None)
@@ -262,20 +279,19 @@ fn run() -> Result<()> {
                 WriteModeChangeArg::Overwrite => Some(WriteMode::Overwrite),
                 WriteModeChangeArg::Ask => Some(WriteMode::Ask),
             });
-            ops::cmd_change(
-                template_name,
+            ops::cmd_change(template_name, ChangeOptions {
                 name,
                 description,
                 location,
-                git_override,
-                commit,
-                pre_init,
-                post_init,
-                git_ref,
-                no_cache_override,
-                exclude_change,
-                write_mode_change,
-            )
+                git: git_override,
+                commit: if unset_commit { Some(None) } else { commit.map(Some) },
+                pre_init: if unset_pre_init { Some(None) } else { pre_init.map(Some) },
+                post_init: if unset_post_init { Some(None) } else { post_init.map(Some) },
+                git_ref: if unset_git_ref { Some(None) } else { git_ref.map(Some) },
+                no_cache: no_cache_override,
+                exclude: exclude_change,
+                write_mode: write_mode_change,
+            })
         }
         Command::List => ops::cmd_list(),
     }

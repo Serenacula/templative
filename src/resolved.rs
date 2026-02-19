@@ -6,8 +6,6 @@ use crate::registry::Template;
 #[derive(Debug)]
 pub struct ResolvedOptions {
     pub git: GitMode,
-    #[allow(dead_code)]
-    pub commit: Option<String>,
     pub pre_init: Option<String>,
     pub post_init: Option<String>,
     pub no_cache: bool,
@@ -30,7 +28,6 @@ impl ResolvedOptions {
         }
         Self {
             git: git_flag.or_else(|| template.git.clone()).unwrap_or_else(|| config.git.clone()),
-            commit: template.commit.clone(),
             pre_init: template.pre_init.clone(),
             post_init: template.post_init.clone(),
             no_cache: template.no_cache.unwrap_or(config.no_cache),

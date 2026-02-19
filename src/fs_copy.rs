@@ -165,9 +165,9 @@ pub fn copy_template(
         .with_context(|| format!("failed to create destination: {}", dest_dir.display()))?;
 
     let globset = build_globset(exclude)?;
-    // `effective_mode` may be escalated from Ask to Overwrite/SkipOverwrite
-    // during the copy when the user makes a session-level policy decision.
-    let mut effective_mode = write_mode.clone();
+    // `copy_mode` starts as `write_mode` and may be escalated to Overwrite or SkipOverwrite
+    // for the rest of the session when the user picks an "apply to all" option.
+    let mut copy_mode = write_mode.clone();
 
     let walker = WalkDir::new(source_dir)
         .follow_links(false)
@@ -196,6 +196,33 @@ pub fn copy_template(
                 fs::create_dir_all(parent)
                     .with_context(|| format!("failed to create parent: {}", parent.display()))?;
             }
+            if dest_path.symlink_metadata().is_ok() {
+                match copy_mode {
+                    WriteMode::Strict | WriteMode::Overwrite => {
+                        fs::remove_file(&dest_path)
+                            .with_context(|| format!("failed to remove existing: {}", dest_path.display()))?;
+                    }
+                    WriteMode::NoOverwrite => {
+                        return Err(TemplativeError::FileWouldBeOverwritten { path: dest_path }.into());
+                    }
+                    WriteMode::SkipOverwrite => continue,
+                    WriteMode::Ask => match prompt_file(&dest_path)? {
+                        FileChoice::Overwrite => {
+                            fs::remove_file(&dest_path).ok();
+                        }
+                        FileChoice::Skip => continue,
+                        FileChoice::OverwriteAll => {
+                            copy_mode = WriteMode::Overwrite;
+                            fs::remove_file(&dest_path).ok();
+                        }
+                        FileChoice::SkipAll => {
+                            copy_mode = WriteMode::SkipOverwrite;
+                            continue;
+                        }
+                        FileChoice::Abort => anyhow::bail!("aborted by user"),
+                    },
+                }
+            }
             copy_symlink(path, &dest_path, source_dir, dest_dir)?;
             continue;
         }
@@ -210,7 +237,7 @@ pub fn copy_template(
             }
 
             if dest_path.exists() {
-                match effective_mode {
+                match copy_mode {
                     WriteMode::Strict | WriteMode::Overwrite => {}
                     WriteMode::NoOverwrite => {
                         return Err(TemplativeError::FileWouldBeOverwritten {
@@ -223,10 +250,10 @@ pub fn copy_template(
                         FileChoice::Overwrite => {}
                         FileChoice::Skip => continue,
                         FileChoice::OverwriteAll => {
-                            effective_mode = WriteMode::Overwrite;
+                            copy_mode = WriteMode::Overwrite;
                         }
                         FileChoice::SkipAll => {
-                            effective_mode = WriteMode::SkipOverwrite;
+                            copy_mode = WriteMode::SkipOverwrite;
                             continue;
                         }
                         FileChoice::Abort => anyhow::bail!("aborted by user"),
@@ -438,5 +465,44 @@ mod tests {
         copy_template(&source, &dest, &[], &WriteMode::Overwrite).unwrap();
 
         assert_eq!(fs::read_to_string(dest.join("file.txt")).unwrap(), "new content");
+    }
+
+    #[test]
+    #[cfg(unix)]
+    fn no_overwrite_errors_on_existing_symlink() {
+        let temp = tempfile::tempdir().unwrap();
+        let source = temp.path().join("template");
+        let dest = temp.path().join("dest");
+        fs::create_dir_all(&source).unwrap();
+        fs::create_dir_all(&dest).unwrap();
+        fs::write(source.join("file.txt"), "content").unwrap();
+        std::os::unix::fs::symlink("file.txt", source.join("link.txt")).unwrap();
+        std::os::unix::fs::symlink("file.txt", dest.join("link.txt")).unwrap();
+
+        let result = copy_template(&source, &dest, &[], &WriteMode::NoOverwrite);
+
+        assert!(result.is_err());
+        assert!(matches!(
+            result.unwrap_err().downcast_ref::<TemplativeError>(),
+            Some(TemplativeError::FileWouldBeOverwritten { .. })
+        ));
+    }
+
+    #[test]
+    #[cfg(unix)]
+    fn skip_overwrite_preserves_existing_symlink() {
+        let temp = tempfile::tempdir().unwrap();
+        let source = temp.path().join("template");
+        let dest = temp.path().join("dest");
+        fs::create_dir_all(&source).unwrap();
+        fs::create_dir_all(&dest).unwrap();
+        fs::write(source.join("file.txt"), "content").unwrap();
+        std::os::unix::fs::symlink("file.txt", source.join("link.txt")).unwrap();
+        // Existing symlink points elsewhere
+        std::os::unix::fs::symlink("other.txt", dest.join("link.txt")).unwrap();
+
+        copy_template(&source, &dest, &[], &WriteMode::SkipOverwrite).unwrap();
+
+        assert_eq!(fs::read_link(dest.join("link.txt")).unwrap(), Path::new("other.txt"));
     }
 }

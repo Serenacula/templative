@@ -18,6 +18,45 @@ struct Row {
     style: Style,
 }
 
+fn git_ref_status(tmpl: &Template, path: &PathBuf, is_url: bool) -> Option<(String, Style)> {
+    let ref_val = tmpl.commit.as_deref().or(tmpl.git_ref.as_deref())?;
+    if tmpl.commit.is_some() {
+        return Some((format!("(at git commit {})", ref_val), Style::Blue));
+    }
+    let repo = if is_url {
+        utilities::cache_path_for_url(&tmpl.location).ok()
+            .filter(|cache_path| cache_path.join(".git").exists())
+    } else if path.join(".git").exists() {
+        Some(path.clone())
+    } else {
+        None
+    };
+    Some(match repo {
+        None => (format!("(git ref {})", ref_val), Style::Blue),
+        Some(repo_path) if !git::ref_exists(&repo_path, ref_val) => {
+            (format!("(git {} missing)", ref_val), Style::Red)
+        }
+        Some(repo_path) => {
+            let status_str = match git::classify_ref(&repo_path, ref_val) {
+                git::RefKind::Branch => format!("(in git branch {})", ref_val),
+                git::RefKind::Tag    => format!("(at git tag {})", ref_val),
+                git::RefKind::Commit => format!("(at git commit {})", ref_val),
+            };
+            (status_str, Style::Blue)
+        }
+    })
+}
+
+fn worse_style(a: Style, b: Style) -> Style {
+    match (a, b) {
+        (Style::RedThrough, _) | (_, Style::RedThrough) => Style::RedThrough,
+        (Style::Red, _) | (_, Style::Red) => Style::Red,
+        (Style::Yellow, _) | (_, Style::Yellow) => Style::Yellow,
+        (Style::Blue, _) | (_, Style::Blue) => Style::Blue,
+        _ => Style::Normal,
+    }
+}
+
 fn template_status(tmpl: &Template) -> (String, Style) {
     let path = PathBuf::from(&tmpl.location);
     let is_url = utilities::is_git_url(&tmpl.location);
@@ -29,43 +68,25 @@ fn template_status(tmpl: &Template) -> (String, Style) {
         && !path.join(".git").exists();
 
     if is_missing {
-        ("(folder missing)".into(), Style::RedThrough)
-    } else if is_empty {
-        ("(folder empty)".into(), Style::Red)
-    } else if let Some(ref_val) = tmpl.commit.as_deref().or(tmpl.git_ref.as_deref()) {
-        if tmpl.commit.is_some() {
-            (format!("(at git commit {})", ref_val), Style::Blue)
-        } else {
-            let repo = if is_url {
-                utilities::cache_path_for_url(&tmpl.location).ok()
-                    .filter(|cache_path| cache_path.join(".git").exists())
-            } else if path.join(".git").exists() {
-                Some(path.clone())
-            } else {
-                None
-            };
-            match repo {
-                None => (format!("(git ref {})", ref_val), Style::Blue),
-                Some(repo_path) if !git::ref_exists(&repo_path, ref_val) => {
-                    (format!("(git {} missing)", ref_val), Style::Red)
-                }
-                Some(repo_path) => {
-                    let status_str = match git::classify_ref(&repo_path, ref_val) {
-                        git::RefKind::Branch => format!("(in git branch {})", ref_val),
-                        git::RefKind::Tag    => format!("(at git tag {})", ref_val),
-                        git::RefKind::Commit => format!("(at git commit {})", ref_val),
-                    };
-                    (status_str, Style::Blue)
-                }
-            }
-        }
-    } else if is_file {
-        ("(single file)".into(), Style::Blue)
-    } else if has_no_git {
-        ("(no git)".into(), Style::Yellow)
-    } else {
-        (String::new(), Style::Normal)
+        return ("(folder missing)".into(), Style::RedThrough);
     }
+    if is_empty {
+        return ("(folder empty)".into(), Style::Red);
+    }
+    if is_file {
+        if let Some((git_str, git_style)) = git_ref_status(tmpl, &path, is_url) {
+            let combined_style = worse_style(Style::Blue, git_style);
+            return (format!("(single file) {}", git_str), combined_style);
+        }
+        return ("(single file)".into(), Style::Blue);
+    }
+    if let Some(git_annotation) = git_ref_status(tmpl, &path, is_url) {
+        return git_annotation;
+    }
+    if has_no_git {
+        return ("(no git)".into(), Style::Yellow);
+    }
+    (String::new(), Style::Normal)
 }
 
 fn col_width(header: &str, values: impl Iterator<Item = usize>) -> usize {

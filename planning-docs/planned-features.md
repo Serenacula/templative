@@ -54,6 +54,7 @@
     -   If resolves inside the template, keep a relative symlink
     -   Else if resolves outside the template, make it absolute
     -   If the file cannot be found, print non-breaking warning! But still create the symlink
+-   Symlink mode: literal, copies exactly
 -   Add flag resolvesymlink
     -   Not resolving is default behaviour, create a new symlink
     -   resolvesymlink instead creates whatever is on the other end of the symlink

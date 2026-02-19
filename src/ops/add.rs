@@ -31,7 +31,7 @@ pub fn cmd_add(
     } else {
         let canonical = PathBuf::from(&path)
             .canonicalize()
-            .with_context(|| format!("path not found or not absolute: {}", path))?;
+            .with_context(|| format!("path not found: {}", path))?;
         let name = name.unwrap_or_else(|| {
             canonical
                 .file_name()
