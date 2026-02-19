@@ -14,7 +14,7 @@ mod resolved;
 mod utilities;
 
 use config::{GitMode, WriteMode};
-use ops::ChangeOptions;
+use ops::{ChangeOptions, Shell};
 
 /// `--git fresh|preserve|no-git` for init and add
 #[derive(clap::ValueEnum, Clone)]
@@ -185,6 +185,14 @@ enum Command {
         #[arg(long = "write-mode")]
         write_mode: Option<WriteModeChangeArg>,
     },
+    /// Generate a shell completion script
+    Completions {
+        /// Shell to generate completions for
+        shell: Shell,
+        /// Check if an installed script is up to date
+        #[arg(long)]
+        check: Option<PathBuf>,
+    },
     /// List registered templates and their paths
     List {
         /// Print only template names, one per line
@@ -302,6 +310,7 @@ fn run() -> Result<()> {
                 write_mode: write_mode_change,
             })
         }
+        Command::Completions { shell, check } => ops::cmd_completions(shell, check),
         Command::List { names_only } => ops::cmd_list(color, names_only),
     }
 }
