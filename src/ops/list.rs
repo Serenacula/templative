@@ -90,7 +90,7 @@ fn col_width(header: &str, values: impl Iterator<Item = usize>) -> usize {
     values.max().unwrap_or(0).max(header.width())
 }
 
-pub fn cmd_list() -> Result<()> {
+pub fn cmd_list(color: bool) -> Result<()> {
     let registry = Registry::load()?;
     if registry.templates.is_empty() {
         println!("no templates available: use `templative add <FOLDER>` to add a template");
@@ -112,10 +112,14 @@ pub fn cmd_list() -> Result<()> {
         format!("{}{}", text, " ".repeat(width.saturating_sub(text.width())))
     };
     let pad_underlined = |text: &str, width: usize| -> String {
-        format!("{}{}", text.underline(), " ".repeat(width.saturating_sub(text.width())))
+        if color {
+            format!("{}{}", text.underline(), " ".repeat(width.saturating_sub(text.width())))
+        } else {
+            format!("{}{}", text, " ".repeat(width.saturating_sub(text.width())))
+        }
     };
 
-    let truecolor = std::env::var("COLORTERM")
+    let truecolor = color && std::env::var("COLORTERM")
         .map(|val| val == "truecolor" || val == "24bit")
         .unwrap_or(false);
 
@@ -127,6 +131,7 @@ pub fn cmd_list() -> Result<()> {
     let desc_w   = if show_desc   { col_width("DESCRIPTION", rows.iter().map(|row| row.description.width())) } else { 0 };
 
     let apply_style = |text: String, style: &Style| -> String {
+        if !color { return text; }
         match style {
             Style::Normal     => text,
             Style::Yellow     => if truecolor { format!("{}", text.truecolor(252, 221, 42)) } else { format!("{}", text.yellow()) },
@@ -139,7 +144,8 @@ pub fn cmd_list() -> Result<()> {
     let mut header = pad_underlined("NAME", name_w);
     if show_status { header = format!("{}  {}", header, pad_underlined("STATUS", status_w)); }
     if show_desc   { header = format!("{}  {}", header, pad_underlined("DESCRIPTION", desc_w)); }
-    println!("{}  {}", header, "LOCATION".underline());
+    let location_header = if color { format!("{}", "LOCATION".underline()) } else { "LOCATION".to_string() };
+    println!("{}  {}", header, location_header);
 
     for row in &rows {
         let mut line = pad(&row.name, name_w);

@@ -149,6 +149,31 @@ fn copy_symlink(source_path: &Path, dest_path: &Path, source_dir: &Path, dest_di
     Ok(())
 }
 
+/// Walks the source tree and returns the destination paths that already exist.
+/// Used by `copy_template` to pre-flight a `NoOverwrite` copy before writing anything.
+fn collect_collisions(source_dir: &Path, dest_dir: &Path, globset: &GlobSet) -> Result<Vec<PathBuf>> {
+    let mut collisions = Vec::new();
+    let walker = WalkDir::new(source_dir)
+        .follow_links(false)
+        .into_iter()
+        .filter_entry(|entry| {
+            entry.path() == source_dir || !should_skip_entry(entry, source_dir, globset)
+        });
+    for entry in walker {
+        let entry = entry.with_context(|| "walkdir entry error")?;
+        let path = entry.path();
+        if path == source_dir || entry.file_type().is_dir() {
+            continue;
+        }
+        let relative = path.strip_prefix(source_dir).with_context(|| "strip_prefix")?;
+        let dest_path = dest_dir.join(relative);
+        if dest_path.symlink_metadata().is_ok() {
+            collisions.push(dest_path);
+        }
+    }
+    Ok(collisions)
+}
+
 /// Copy template from `source_dir` to `dest_dir`.
 /// `.git` is always excluded. `exclude` patterns are matched against each path
 /// component and the full relative path. Symlinks are recreated. Preserves file permissions.
@@ -165,6 +190,14 @@ pub fn copy_template(
         .with_context(|| format!("failed to create destination: {}", dest_dir.display()))?;
 
     let globset = build_globset(exclude)?;
+
+    if *write_mode == WriteMode::NoOverwrite {
+        let collisions = collect_collisions(source_dir, dest_dir, &globset)?;
+        if !collisions.is_empty() {
+            return Err(TemplativeError::FilesWouldBeOverwritten { paths: collisions }.into());
+        }
+    }
+
     // `copy_mode` starts as `write_mode` and may be escalated to Overwrite or SkipOverwrite
     // for the rest of the session when the user picks an "apply to all" option.
     let mut copy_mode = write_mode.clone();
@@ -198,12 +231,9 @@ pub fn copy_template(
             }
             if dest_path.symlink_metadata().is_ok() {
                 match copy_mode {
-                    WriteMode::Strict | WriteMode::Overwrite => {
+                    WriteMode::Strict | WriteMode::Overwrite | WriteMode::NoOverwrite => {
                         fs::remove_file(&dest_path)
                             .with_context(|| format!("failed to remove existing: {}", dest_path.display()))?;
-                    }
-                    WriteMode::NoOverwrite => {
-                        return Err(TemplativeError::FileWouldBeOverwritten { path: dest_path }.into());
                     }
                     WriteMode::SkipOverwrite => continue,
                     WriteMode::Ask => match prompt_file(&dest_path)? {
@@ -238,13 +268,7 @@ pub fn copy_template(
 
             if dest_path.exists() {
                 match copy_mode {
-                    WriteMode::Strict | WriteMode::Overwrite => {}
-                    WriteMode::NoOverwrite => {
-                        return Err(TemplativeError::FileWouldBeOverwritten {
-                            path: dest_path,
-                        }
-                        .into());
-                    }
+                    WriteMode::Strict | WriteMode::Overwrite | WriteMode::NoOverwrite => {}
                     WriteMode::SkipOverwrite => continue,
                     WriteMode::Ask => match prompt_file(&dest_path)? {
                         FileChoice::Overwrite => {}
@@ -430,9 +454,27 @@ mod tests {
         assert!(result.is_err());
         assert!(matches!(
             result.unwrap_err().downcast_ref::<TemplativeError>(),
-            Some(TemplativeError::FileWouldBeOverwritten { .. })
+            Some(TemplativeError::FilesWouldBeOverwritten { .. })
         ));
         assert_eq!(fs::read_to_string(dest.join("file.txt")).unwrap(), "original content");
+    }
+
+    #[test]
+    fn no_overwrite_writes_nothing_when_collision_exists() {
+        let temp = tempfile::tempdir().unwrap();
+        let source = temp.path().join("template");
+        let dest = temp.path().join("dest");
+        fs::create_dir_all(&source).unwrap();
+        fs::create_dir_all(&dest).unwrap();
+        fs::write(source.join("new.txt"), "new content").unwrap();
+        fs::write(source.join("collision.txt"), "new content").unwrap();
+        fs::write(dest.join("collision.txt"), "original").unwrap();
+
+        let result = copy_template(&source, &dest, &[], &WriteMode::NoOverwrite);
+
+        assert!(result.is_err());
+        // new.txt must not have been written — error was raised before any writes
+        assert!(!dest.join("new.txt").exists());
     }
 
     #[test]
@@ -484,7 +526,7 @@ mod tests {
         assert!(result.is_err());
         assert!(matches!(
             result.unwrap_err().downcast_ref::<TemplativeError>(),
-            Some(TemplativeError::FileWouldBeOverwritten { .. })
+            Some(TemplativeError::FilesWouldBeOverwritten { .. })
         ));
     }
 

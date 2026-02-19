@@ -52,6 +52,8 @@ fn default_write_mode() -> WriteMode {
     WriteMode::Strict
 }
 
+fn default_true() -> bool { true }
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Config {
     pub version: u32,
@@ -65,6 +67,8 @@ pub struct Config {
     pub exclude: Vec<String>,
     #[serde(default = "default_write_mode")]
     pub write_mode: WriteMode,
+    #[serde(default = "default_true")]
+    pub color: bool,
 }
 
 impl Config {
@@ -76,6 +80,7 @@ impl Config {
             no_cache: false,
             exclude: default_exclude(),
             write_mode: WriteMode::Strict,
+            color: true,
         }
     }
 
@@ -186,6 +191,24 @@ mod tests {
     }
 
     #[test]
+    fn color_defaults_to_true() {
+        let json = r#"{"version":1}"#;
+        let config: Config = serde_json::from_str(json).unwrap();
+        assert!(config.color);
+    }
+
+    #[test]
+    fn color_roundtrip() {
+        let temp = tempfile::tempdir().unwrap();
+        let path = temp.path().join("config.json");
+        let mut config = Config::new();
+        config.color = false;
+        config.save_to_path(&path).unwrap();
+        let loaded = Config::load_from_path(&path).unwrap();
+        assert!(!loaded.color);
+    }
+
+    #[test]
     fn git_mode_serializes_kebab_case() {
         let config = Config::new();
         let json = serde_json::to_string(&config).unwrap();
@@ -204,6 +227,7 @@ mod tests {
             no_cache: true,
             exclude: vec!["dist".into()],
             write_mode: WriteMode::Strict,
+            color: true,
         };
         config.save_to_path(&path).unwrap();
         let loaded = Config::load_from_path(&path).unwrap();

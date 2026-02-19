@@ -53,6 +53,7 @@ mod tests {
             no_cache: false,
             exclude: vec!["node_modules".into(), ".DS_Store".into()],
             write_mode: WriteMode::Strict,
+            color: true,
         }
     }
 

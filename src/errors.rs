@@ -27,6 +27,6 @@ pub enum TemplativeError {
     #[error("unsupported config version (expected 1)")]
     UnsupportedConfigVersion,
 
-    #[error("file would be overwritten: {path:?}")]
-    FileWouldBeOverwritten { path: PathBuf },
+    #[error("the following files would be overwritten:\n{}", paths.iter().map(|p| format!("  {}", p.display())).collect::<Vec<_>>().join("\n"))]
+    FilesWouldBeOverwritten { paths: Vec<PathBuf> },
 }

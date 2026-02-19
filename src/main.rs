@@ -77,6 +77,12 @@ enum NoCacheArg {
 struct Cli {
     #[arg(short = 'v', long, action = clap::ArgAction::Version)]
     version: Option<bool>,
+    /// Force coloured output
+    #[arg(long, overrides_with = "no_color", global = true)]
+    color: bool,
+    /// Disable coloured output
+    #[arg(long = "no-color", overrides_with = "color", global = true)]
+    no_color: bool,
     #[command(subcommand)]
     command: Command,
 }
@@ -204,6 +210,10 @@ fn write_mode_arg_to_mode(arg: WriteModeArg) -> WriteMode {
 fn run() -> Result<()> {
     let cli = Cli::parse();
     let config = config::Config::load()?;
+    let color = if cli.no_color { false }
+        else if cli.color { true }
+        else if std::env::var_os("NO_COLOR").is_some() { false }
+        else { config.color };
     match cli.command {
         Command::Init {
             template_name,
@@ -288,7 +298,7 @@ fn run() -> Result<()> {
                 write_mode: write_mode_change,
             })
         }
-        Command::List => ops::cmd_list(),
+        Command::List => ops::cmd_list(color),
     }
 }
 
