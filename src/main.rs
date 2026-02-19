@@ -66,7 +66,7 @@ enum NoCacheArg {
     Yes,
     #[value(name = "false")]
     No,
-    #[value(name = "none")]
+    #[value(name = "unset")]
     Unset,
 }
 
