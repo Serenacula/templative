@@ -33,7 +33,7 @@ pub fn cmd_add(
         let name = name.unwrap_or_else(|| {
             canonical
                 .file_name()
-                .map(|os| os.to_string_lossy().into_owned())
+                .map(|os_str| os_str.to_string_lossy().into_owned())
                 .unwrap_or_else(|| "template".to_string())
         });
         (canonical.to_string_lossy().into_owned(), name)

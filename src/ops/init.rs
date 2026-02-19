@@ -11,6 +11,48 @@ use crate::registry::Registry;
 use crate::resolved::ResolvedOptions;
 use crate::utilities;
 
+/// Resolves the template source path, cloning or using cache as needed.
+/// Returns the path and an optional TempDir that must stay alive for the duration of the copy.
+fn resolve_template_path(
+    location: &str,
+    location_is_url: bool,
+    resolved: &ResolvedOptions,
+) -> Result<(PathBuf, Option<tempfile::TempDir>)> {
+    if location_is_url {
+        if resolved.no_cache {
+            let tempdir = tempfile::tempdir().context("failed to create temp dir")?;
+            git::clone_repo(location, tempdir.path())?;
+            if let Some(ref git_ref) = resolved.git_ref {
+                git::checkout_ref(tempdir.path(), git_ref)?;
+            }
+            let path = tempdir.path().to_path_buf();
+            Ok((path, Some(tempdir)))
+        } else {
+            let cache_path = git_cache::ensure_cached(location)?;
+            let should_update = resolved.git_ref.is_none()
+                && resolved.update_on_init != UpdateOnInit::Never;
+            if should_update {
+                let _ = git_cache::update_cache(&cache_path);
+            }
+            if let Some(ref git_ref) = resolved.git_ref {
+                git::checkout_ref(&cache_path, git_ref)?;
+            }
+            Ok((cache_path, None))
+        }
+    } else {
+        let path = PathBuf::from(location);
+        let git_dir = path.join(".git");
+        if resolved.git_ref.is_none()
+            && resolved.update_on_init == UpdateOnInit::Always
+            && git_dir.exists()
+        {
+            let _ = git::fetch_origin(&path);
+            let _ = git::reset_hard_origin(&path);
+        }
+        Ok((path, None))
+    }
+}
+
 pub fn cmd_init(
     config: Config,
     template_name: String,
@@ -29,44 +71,7 @@ pub fn cmd_init(
     let location = template.location.clone();
     let location_is_url = utilities::is_git_url(&location);
 
-    // Determine template source path (and keep tempdir alive if used)
-    let _tempdir: Option<tempfile::TempDir>;
-    let template_path: PathBuf;
-
-    if location_is_url {
-        if resolved.no_cache {
-            let td = tempfile::tempdir().context("failed to create temp dir")?;
-            git::clone_repo(&location, td.path())?;
-            if let Some(ref git_ref) = resolved.git_ref {
-                git::checkout_ref(td.path(), git_ref)?;
-            }
-            template_path = td.path().to_path_buf();
-            _tempdir = Some(td);
-        } else {
-            let cache_path = git_cache::ensure_cached(&location)?;
-            let should_update = resolved.git_ref.is_none()
-                && resolved.update_on_init != UpdateOnInit::Never;
-            if should_update {
-                let _ = git_cache::update_cache(&cache_path);
-            }
-            if let Some(ref git_ref) = resolved.git_ref {
-                git::checkout_ref(&cache_path, git_ref)?;
-            }
-            template_path = cache_path;
-            _tempdir = None;
-        }
-    } else {
-        template_path = PathBuf::from(&location);
-        _tempdir = None;
-        let git_dir = template_path.join(".git");
-        if resolved.git_ref.is_none()
-            && resolved.update_on_init == UpdateOnInit::Always
-            && git_dir.exists()
-        {
-            let _ = git::fetch_origin(&template_path);
-            let _ = git::reset_hard_origin(&template_path);
-        }
-    }
+    let (template_path, _tempdir) = resolve_template_path(&location, location_is_url, &resolved)?;
 
     if !template_path.exists() || !template_path.is_dir() {
         return Err(TemplativeError::TemplatePathMissing {

@@ -33,24 +33,13 @@ pub fn check_user_config() -> Result<()> {
     Ok(())
 }
 
-fn run_git_global(args: &[&str]) -> Result<()> {
-    let output = Command::new("git")
-        .args(args)
-        .output()
-        .context("failed to execute git")?;
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        anyhow::bail!("git {} failed: {}", args.join(" "), stderr);
+fn run_git(dir: Option<&Path>, args: &[&str]) -> Result<()> {
+    let mut cmd = Command::new("git");
+    cmd.args(args);
+    if let Some(path) = dir {
+        cmd.current_dir(path);
     }
-    Ok(())
-}
-
-fn run_git(target_path: &Path, args: &[&str]) -> Result<()> {
-    let output = Command::new("git")
-        .args(args)
-        .current_dir(target_path)
-        .output()
-        .context("failed to execute git")?;
+    let output = cmd.output().context("failed to execute git")?;
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
         anyhow::bail!("git {} failed: {}", args.join(" "), stderr);
@@ -59,43 +48,43 @@ fn run_git(target_path: &Path, args: &[&str]) -> Result<()> {
 }
 
 pub fn init_repo(target_path: &Path) -> Result<()> {
-    run_git(target_path, &["init"]).context("git init failed")
+    run_git(Some(target_path), &["init"]).context("git init failed")
 }
 
 pub fn add_all(target_path: &Path) -> Result<()> {
-    run_git(target_path, &["add", "-A"]).context("git add -A failed")
+    run_git(Some(target_path), &["add", "-A"]).context("git add -A failed")
 }
 
 pub fn initial_commit(target_path: &Path, template_name: &str) -> Result<()> {
     let message = format!("Initial commit from template: {}", template_name);
-    run_git(target_path, &["commit", "-m", &message]).context("git commit failed")
+    run_git(Some(target_path), &["commit", "-m", &message]).context("git commit failed")
 }
 
 pub fn clone_repo(url: &str, dest: &Path) -> Result<()> {
     let dest_str = dest.to_string_lossy().into_owned();
-    run_git_global(&["clone", url, &dest_str])
+    run_git(None, &["clone", url, &dest_str])
 }
 
 pub fn clone_local(source: &Path, dest: &Path) -> Result<()> {
     let src_str = source.to_string_lossy().into_owned();
     let dest_str = dest.to_string_lossy().into_owned();
-    run_git_global(&["clone", &src_str, &dest_str])
+    run_git(None, &["clone", &src_str, &dest_str])
 }
 
 pub fn set_remote_url(repo: &Path, url: &str) -> Result<()> {
-    run_git(repo, &["remote", "set-url", "origin", url])
+    run_git(Some(repo), &["remote", "set-url", "origin", url])
 }
 
 pub fn fetch_origin(repo: &Path) -> Result<()> {
-    run_git(repo, &["fetch", "origin"])
+    run_git(Some(repo), &["fetch", "origin"])
 }
 
 pub fn reset_hard_origin(repo: &Path) -> Result<()> {
-    run_git(repo, &["reset", "--hard", "origin/HEAD"])
+    run_git(Some(repo), &["reset", "--hard", "origin/HEAD"])
 }
 
 pub fn checkout_ref(repo: &Path, git_ref: &str) -> Result<()> {
-    run_git(repo, &["checkout", git_ref])
+    run_git(Some(repo), &["checkout", git_ref])
 }
 
 pub fn ref_exists(repo: &Path, git_ref: &str) -> bool {

@@ -60,9 +60,6 @@ pub fn copy_template(source_dir: &Path, dest_dir: &Path) -> Result<()> {
         if entry.path().is_symlink() {
             return Err(TemplativeError::SymlinkNotSupported.into());
         }
-        if should_skip_entry(&entry, source_dir) {
-            continue;
-        }
         let relative = path
             .strip_prefix(source_dir)
             .with_context(|| "strip_prefix")?;
