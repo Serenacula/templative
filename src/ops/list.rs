@@ -119,17 +119,28 @@ pub fn cmd_list() -> Result<()> {
     println!("{}", header);
 
     for row in &rows {
-        let mut line = pad(&row.name, name_w);
-        if show_status { line = format!("{}  {}", line, pad(&row.status, status_w)); }
-        if show_desc   { line = format!("{}  {}", line, pad(&row.desc, desc_w)); }
-        line = format!("{}  {}", line, row.location);
-        match row.style {
-            Style::Normal     => println!("{}", line),
-            Style::Yellow     => println!("{}", line.yellow()),
-            Style::Blue       => println!("{}", line.blue()),
-            Style::Red        => println!("{}", line.red()),
-            Style::RedThrough => println!("{}", line.red().strikethrough()),
+        let name_col   = pad(&row.name, name_w);
+        let status_col = if show_status { pad(&row.status, status_w) } else { String::new() };
+
+        let mut out = match row.style {
+            Style::Normal     => name_col,
+            Style::Yellow     => format!("{}", name_col.yellow()),
+            Style::Blue       => format!("{}", name_col.blue()),
+            Style::Red        => format!("{}", name_col.red()),
+            Style::RedThrough => format!("{}", name_col.red().strikethrough()),
+        };
+        if show_status {
+            let styled_status = match row.style {
+                Style::Normal     => status_col,
+                Style::Yellow     => format!("{}", status_col.yellow()),
+                Style::Blue       => format!("{}", status_col.blue()),
+                Style::Red        => format!("{}", status_col.red()),
+                Style::RedThrough => format!("{}", status_col.red().strikethrough()),
+            };
+            out = format!("{}  {}", out, styled_status);
         }
+        if show_desc { out = format!("{}  {}", out, pad(&row.desc, desc_w)); }
+        println!("{}  {}", out, row.location);
     }
     Ok(())
 }
