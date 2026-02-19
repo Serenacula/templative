@@ -78,10 +78,10 @@ struct Cli {
     #[arg(short = 'v', long, action = clap::ArgAction::Version)]
     version: Option<bool>,
     /// Force coloured output
-    #[arg(long, overrides_with = "no_color", global = true)]
+    #[arg(long, overrides_with = "no_color")]
     color: bool,
     /// Disable coloured output
-    #[arg(long = "no-color", overrides_with = "color", global = true)]
+    #[arg(long = "no-color", overrides_with = "color")]
     no_color: bool,
     #[command(subcommand)]
     command: Command,
