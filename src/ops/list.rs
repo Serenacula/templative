@@ -103,24 +103,31 @@ pub fn cmd_list() -> Result<()> {
         format!("{}{}", s.underline(), " ".repeat(w.saturating_sub(s.width())))
     };
 
-    let name_w   = rows.iter().map(|r| r.name.width()).max().unwrap_or(0).max("NAME".width());
-    let status_w = rows.iter().map(|r| r.status.width()).max().unwrap_or(0).max("STATUS".width());
-    let desc_w   = rows.iter().map(|r| r.desc.width()).max().unwrap_or(0).max("DESCRIPTION".width());
-    let loc_w    = rows.iter().map(|r| r.location.width()).max().unwrap_or(0).max("LOCATION".width());
+    let show_status = rows.iter().any(|r| !r.status.is_empty());
+    let show_desc   = rows.iter().any(|r| !r.desc.is_empty());
 
-    println!("{}  {}  {}  {}",
-        upad("NAME", name_w), upad("STATUS", status_w),
-        upad("DESCRIPTION", desc_w), "LOCATION".underline());
+    let name_w   = rows.iter().map(|r| r.name.width()).max().unwrap_or(0).max("NAME".width());
+    let status_w = if show_status { rows.iter().map(|r| r.status.width()).max().unwrap_or(0).max("STATUS".width()) } else { 0 };
+    let desc_w   = if show_desc   { rows.iter().map(|r| r.desc.width()).max().unwrap_or(0).max("DESCRIPTION".width()) } else { 0 };
+
+    let header = {
+        let mut h = upad("NAME", name_w);
+        if show_status { h = format!("{}  {}", h, upad("STATUS", status_w)); }
+        if show_desc   { h = format!("{}  {}", h, upad("DESCRIPTION", desc_w)); }
+        format!("{}  {}", h, "LOCATION".underline())
+    };
+    println!("{}", header);
 
     for row in &rows {
-        let line = format!("{}  {}  {}  {}",
-            pad(&row.name, name_w), pad(&row.status, status_w),
-            pad(&row.desc, desc_w), row.location);
+        let mut line = pad(&row.name, name_w);
+        if show_status { line = format!("{}  {}", line, pad(&row.status, status_w)); }
+        if show_desc   { line = format!("{}  {}", line, pad(&row.desc, desc_w)); }
+        line = format!("{}  {}", line, row.location);
         match row.style {
-            Style::Normal   => println!("{}", line),
-            Style::Yellow   => println!("{}", line.yellow()),
-            Style::Blue     => println!("{}", line.blue()),
-            Style::Red      => println!("{}", line.red()),
+            Style::Normal     => println!("{}", line),
+            Style::Yellow     => println!("{}", line.yellow()),
+            Style::Blue       => println!("{}", line.blue()),
+            Style::Red        => println!("{}", line.red()),
             Style::RedThrough => println!("{}", line.red().strikethrough()),
         }
     }
