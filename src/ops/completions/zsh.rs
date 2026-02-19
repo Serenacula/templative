@@ -1,7 +1,7 @@
-pub const VERSION: u32 = 1;
+pub const VERSION: u32 = 2;
 
 pub const SCRIPT: &str = r#"#compdef templative
-# templative-completions-version: 1
+# templative-completions-version: 2
 
 _templative_template_names() {
   local -a names
@@ -47,7 +47,6 @@ _templative() {
             '(-d --description)'{-d,--description}'[Description]:desc:' \
             '--git[Git mode]:mode:(fresh preserve no-git)' \
             '--git-ref[Pin to git ref]:ref:' \
-            '--no-cache[Skip cache]' \
             '--exclude[Exclude patterns]:pattern:' \
             '--write-mode[Write mode]:mode:(strict no-overwrite skip-overwrite overwrite ask)' \
             '1:path:_files -/'
@@ -65,7 +64,6 @@ _templative() {
             '--unset-post-init[Clear post-init hook]' \
             '--git-ref[Pin to git ref]:ref:' \
             '--unset-git-ref[Clear git ref]' \
-            '--no-cache[No-cache setting]:value:(true false unset)' \
             '--exclude[Exclude patterns]:pattern:' \
             '--clear-exclude[Clear all exclude patterns]' \
             '--write-mode[Write mode]:mode:(strict no-overwrite skip-overwrite overwrite ask unset)' \

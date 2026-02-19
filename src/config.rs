@@ -28,18 +28,6 @@ fn default_exclude() -> Vec<String> {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "kebab-case")]
-pub enum UpdateOnInit {
-    Always,
-    OnlyUrl,
-    Never,
-}
-
-fn default_update_on_init() -> UpdateOnInit {
-    UpdateOnInit::OnlyUrl
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-#[serde(rename_all = "kebab-case")]
 pub enum WriteMode {
     Strict,
     NoOverwrite,
@@ -59,10 +47,6 @@ pub struct Config {
     pub version: u32,
     #[serde(default = "default_git_mode")]
     pub git: GitMode,
-    #[serde(default = "default_update_on_init")]
-    pub update_on_init: UpdateOnInit,
-    #[serde(default)]
-    pub no_cache: bool,
     #[serde(default = "default_exclude")]
     pub exclude: Vec<String>,
     #[serde(default = "default_write_mode")]
@@ -76,8 +60,6 @@ impl Config {
         Self {
             version: CONFIG_VERSION,
             git: GitMode::Fresh,
-            update_on_init: UpdateOnInit::OnlyUrl,
-            no_cache: false,
             exclude: default_exclude(),
             write_mode: WriteMode::Strict,
             color: true,
@@ -186,8 +168,6 @@ mod tests {
         std::fs::write(&path, r#"{"version": 1}"#).unwrap();
         let config = Config::load_from_path(&path).unwrap();
         assert_eq!(config.git, GitMode::Fresh);
-        assert_eq!(config.update_on_init, UpdateOnInit::OnlyUrl);
-        assert!(!config.no_cache);
     }
 
     #[test]
@@ -213,7 +193,6 @@ mod tests {
         let config = Config::new();
         let json = serde_json::to_string(&config).unwrap();
         assert!(json.contains("fresh"));
-        assert!(json.contains("only-url"));
     }
 
     #[test]
@@ -223,8 +202,6 @@ mod tests {
         let config = Config {
             version: 1,
             git: GitMode::Preserve,
-            update_on_init: UpdateOnInit::Always,
-            no_cache: true,
             exclude: vec!["dist".into()],
             write_mode: WriteMode::Strict,
             color: true,
@@ -232,16 +209,13 @@ mod tests {
         config.save_to_path(&path).unwrap();
         let loaded = Config::load_from_path(&path).unwrap();
         assert_eq!(loaded.git, GitMode::Preserve);
-        assert_eq!(loaded.update_on_init, UpdateOnInit::Always);
-        assert!(loaded.no_cache);
     }
 
     #[test]
     fn git_mode_no_git_roundtrip() {
-        let json = r#"{"version":1,"git":"no-git","update_on_init":"never","no_cache":false}"#;
+        let json = r#"{"version":1,"git":"no-git"}"#;
         let config: Config = serde_json::from_str(json).unwrap();
         assert_eq!(config.git, GitMode::NoGit);
-        assert_eq!(config.update_on_init, UpdateOnInit::Never);
     }
 
     #[test]

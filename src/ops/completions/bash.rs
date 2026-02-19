@@ -1,6 +1,6 @@
-pub const VERSION: u32 = 1;
+pub const VERSION: u32 = 2;
 
-pub const SCRIPT: &str = r#"# templative-completions-version: 1
+pub const SCRIPT: &str = r#"# templative-completions-version: 2
 
 _templative() {
   local cur="${COMP_WORDS[$COMP_CWORD]}"
@@ -42,7 +42,7 @@ _templative() {
         add)
           COMPREPLY=($(compgen -d -- "$cur")) ;;
         *)
-          COMPREPLY=($(compgen -W "--name -n --description -d --git --git-ref --no-cache --exclude --write-mode --help -h" -- "$cur")) ;;
+          COMPREPLY=($(compgen -W "--name -n --description -d --git --git-ref --exclude --write-mode --help -h" -- "$cur")) ;;
       esac
       ;;
     change)

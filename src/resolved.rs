@@ -1,4 +1,4 @@
-use crate::config::{Config, GitMode, UpdateOnInit, WriteMode};
+use crate::config::{Config, GitMode, WriteMode};
 use crate::registry::Template;
 
 /// Merged settings for a single `init` invocation.
@@ -8,9 +8,7 @@ pub struct ResolvedOptions {
     pub git: GitMode,
     pub pre_init: Option<String>,
     pub post_init: Option<String>,
-    pub no_cache: bool,
     pub git_ref: Option<String>,
-    pub update_on_init: UpdateOnInit,
     pub exclude: Vec<String>,
     pub write_mode: WriteMode,
 }
@@ -30,9 +28,7 @@ impl ResolvedOptions {
             git: git_flag.or_else(|| template.git.clone()).unwrap_or_else(|| config.git.clone()),
             pre_init: template.pre_init.clone(),
             post_init: template.post_init.clone(),
-            no_cache: template.no_cache.unwrap_or(config.no_cache),
             git_ref: template.git_ref.clone(),
-            update_on_init: config.update_on_init.clone(),
             exclude,
             write_mode: write_mode_flag
                 .or_else(|| template.write_mode.clone())
@@ -49,8 +45,6 @@ mod tests {
         Config {
             version: 1,
             git,
-            update_on_init: UpdateOnInit::OnlyUrl,
-            no_cache: false,
             exclude: vec!["node_modules".into(), ".DS_Store".into()],
             write_mode: WriteMode::Strict,
             color: true,
@@ -66,7 +60,6 @@ mod tests {
             pre_init: None,
             post_init: None,
             git_ref: None,
-            no_cache: None,
             exclude: None,
             write_mode: None,
         }
@@ -117,45 +110,11 @@ mod tests {
     }
 
     #[test]
-    fn no_cache_resolves_from_template() {
-        let mut template = make_template(None);
-        template.no_cache = Some(true);
-        let resolved = ResolvedOptions::build(&make_config(GitMode::Fresh), &template, None, None);
-        assert!(resolved.no_cache);
-    }
-
-    #[test]
-    fn no_cache_resolves_from_config() {
-        let mut config = make_config(GitMode::Fresh);
-        config.no_cache = true;
-        let resolved = ResolvedOptions::build(&config, &make_template(None), None, None);
-        assert!(resolved.no_cache);
-    }
-
-    #[test]
-    fn template_no_cache_overrides_config() {
-        let mut config = make_config(GitMode::Fresh);
-        config.no_cache = true;
-        let mut template = make_template(None);
-        template.no_cache = Some(false);
-        let resolved = ResolvedOptions::build(&config, &template, None, None);
-        assert!(!resolved.no_cache);
-    }
-
-    #[test]
     fn git_ref_resolves_from_template() {
         let mut template = make_template(None);
         template.git_ref = Some("v1.0".into());
         let resolved = ResolvedOptions::build(&make_config(GitMode::Fresh), &template, None, None);
         assert_eq!(resolved.git_ref.as_deref(), Some("v1.0"));
-    }
-
-    #[test]
-    fn update_on_init_comes_from_config() {
-        let mut config = make_config(GitMode::Fresh);
-        config.update_on_init = UpdateOnInit::Never;
-        let resolved = ResolvedOptions::build(&config, &make_template(None), None, None);
-        assert_eq!(resolved.update_on_init, UpdateOnInit::Never);
     }
 
     #[test]

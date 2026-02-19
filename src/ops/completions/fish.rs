@@ -1,6 +1,6 @@
-pub const VERSION: u32 = 1;
+pub const VERSION: u32 = 2;
 
-pub const SCRIPT: &str = r#"# templative-completions-version: 1
+pub const SCRIPT: &str = r#"# templative-completions-version: 2
 
 # Disable file completion globally
 complete -c templative -f
@@ -46,7 +46,6 @@ complete -c templative -n '__fish_seen_subcommand_from add' -s n -l name -d 'Tem
 complete -c templative -n '__fish_seen_subcommand_from add' -s d -l description -d 'Description' -r
 complete -c templative -n '__fish_seen_subcommand_from add' -l git -d 'Git mode' -a 'fresh preserve no-git' -r
 complete -c templative -n '__fish_seen_subcommand_from add' -l git-ref -d 'Pin to git ref' -r
-complete -c templative -n '__fish_seen_subcommand_from add' -l no-cache -d 'Skip cache'
 complete -c templative -n '__fish_seen_subcommand_from add' -l exclude -d 'Exclude patterns' -r
 complete -c templative -n '__fish_seen_subcommand_from add' -l write-mode -d 'Write mode' -a 'strict no-overwrite skip-overwrite overwrite ask' -r
 
@@ -63,7 +62,6 @@ complete -c templative -n '__fish_seen_subcommand_from change' -l post-init -d '
 complete -c templative -n '__fish_seen_subcommand_from change' -l unset-post-init -d 'Clear post-init hook'
 complete -c templative -n '__fish_seen_subcommand_from change' -l git-ref -d 'Pin to git ref' -r
 complete -c templative -n '__fish_seen_subcommand_from change' -l unset-git-ref -d 'Clear git ref'
-complete -c templative -n '__fish_seen_subcommand_from change' -l no-cache -d 'No-cache setting' -a 'true false unset' -r
 complete -c templative -n '__fish_seen_subcommand_from change' -l exclude -d 'Exclude patterns' -r
 complete -c templative -n '__fish_seen_subcommand_from change' -l clear-exclude -d 'Clear all exclude patterns'
 complete -c templative -n '__fish_seen_subcommand_from change' -l write-mode -d 'Write mode' -a 'strict no-overwrite skip-overwrite overwrite ask unset' -r

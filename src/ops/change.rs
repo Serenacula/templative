@@ -14,7 +14,6 @@ pub struct ChangeOptions {
     pub pre_init: Option<Option<String>>,
     pub post_init: Option<Option<String>>,
     pub git_ref: Option<Option<String>>,
-    pub no_cache: Option<Option<bool>>,
     pub exclude: Option<Option<Vec<String>>>,
     pub write_mode: Option<Option<WriteMode>>,
 }
@@ -28,7 +27,6 @@ impl ChangeOptions {
             && self.pre_init.is_none()
             && self.post_init.is_none()
             && self.git_ref.is_none()
-            && self.no_cache.is_none()
             && self.exclude.is_none()
             && self.write_mode.is_none()
     }
@@ -64,7 +62,6 @@ pub fn cmd_change(template_name: String, options: ChangeOptions) -> Result<()> {
     if let Some(new_pre_init) = options.pre_init { template.pre_init = new_pre_init; }
     if let Some(new_post_init) = options.post_init { template.post_init = new_post_init; }
     if let Some(new_git_ref) = options.git_ref { template.git_ref = new_git_ref; }
-    if let Some(new_no_cache) = options.no_cache { template.no_cache = new_no_cache; }
     if let Some(new_exclude) = options.exclude { template.exclude = new_exclude; }
     if let Some(new_write_mode) = options.write_mode { template.write_mode = new_write_mode; }
 

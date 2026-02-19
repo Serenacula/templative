@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use anyhow::{Context, Result};
 
-use crate::config::{Config, GitMode, UpdateOnInit, WriteMode};
+use crate::config::{Config, GitMode, WriteMode};
 use crate::errors::TemplativeError;
 use crate::fs_copy;
 use crate::git;
@@ -11,7 +11,10 @@ use crate::registry::Registry;
 use crate::resolved::ResolvedOptions;
 use crate::utilities;
 
-/// Resolves the template source path, cloning or using cache as needed.
+/// Resolves the template source path.
+/// For URL templates, uses the cache (always updated; silently falls back to cached if offline).
+/// For local templates, uses the path as-is.
+/// When `git_ref` is set, a temp clone is used to avoid mutating the source repo.
 /// Returns the path and an optional TempDir that must stay alive for the duration of the copy.
 fn resolve_template_path(
     location: &str,
@@ -19,36 +22,28 @@ fn resolve_template_path(
     resolved: &ResolvedOptions,
 ) -> Result<(PathBuf, Option<tempfile::TempDir>)> {
     if location_is_url {
-        if resolved.no_cache {
+        let cache_path = git_cache::ensure_cached(location)?;
+        git_cache::update_cache(&cache_path);
+        if let Some(ref git_ref) = resolved.git_ref {
             let tempdir = tempfile::tempdir().context("failed to create temp dir")?;
-            git::clone_repo(location, tempdir.path())?;
-            if let Some(ref git_ref) = resolved.git_ref {
-                git::checkout_ref(tempdir.path(), git_ref)?;
-            }
+            git::clone_local(&cache_path, tempdir.path())?;
+            git::checkout_ref(tempdir.path(), git_ref)?;
             let path = tempdir.path().to_path_buf();
             Ok((path, Some(tempdir)))
         } else {
-            let cache_path = git_cache::ensure_cached(location)?;
-            let should_update = resolved.update_on_init != UpdateOnInit::Never;
-            if should_update {
-                git_cache::update_cache(&cache_path);
-            }
-            if let Some(ref git_ref) = resolved.git_ref {
-                git::checkout_ref(&cache_path, git_ref)?;
-            }
             Ok((cache_path, None))
         }
     } else {
         let path = PathBuf::from(location);
-        let git_dir = path.join(".git");
-        if resolved.git_ref.is_none()
-            && resolved.update_on_init == UpdateOnInit::Always
-            && git_dir.exists()
-        {
-            let _ = git::fetch_origin(&path);
-            let _ = git::reset_hard_origin(&path);
+        if let Some(ref git_ref) = resolved.git_ref {
+            let tempdir = tempfile::tempdir().context("failed to create temp dir")?;
+            git::clone_local(&path, tempdir.path())?;
+            git::checkout_ref(tempdir.path(), git_ref)?;
+            let path = tempdir.path().to_path_buf();
+            Ok((path, Some(tempdir)))
+        } else {
+            Ok((path, None))
         }
-        Ok((path, None))
     }
 }
 
@@ -95,12 +90,12 @@ pub fn cmd_init(
         .into());
     }
 
-    if let Some(ref cmd) = resolved.pre_init {
-        utilities::run_hook(cmd, &target_canonical)?;
-    }
-
     if resolved.write_mode == WriteMode::Strict && !utilities::is_dir_empty(&target_canonical)? {
         return Err(TemplativeError::TargetNotEmpty.into());
+    }
+
+    if let Some(ref cmd) = resolved.pre_init {
+        utilities::run_hook(cmd, &target_canonical)?;
     }
 
     match resolved.git {

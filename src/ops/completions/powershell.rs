@@ -1,6 +1,6 @@
-pub const VERSION: u32 = 1;
+pub const VERSION: u32 = 2;
 
-pub const SCRIPT: &str = r#"# templative-completions-version: 1
+pub const SCRIPT: &str = r#"# templative-completions-version: 2
 
 Register-ArgumentCompleter -Native -CommandName templative -ScriptBlock {
     param($wordToComplete, $commandAst, $cursorPosition)
@@ -34,16 +34,15 @@ Register-ArgumentCompleter -Native -CommandName templative -ScriptBlock {
                 switch ($prev) {
                     '--git'        { @('fresh', 'preserve', 'no-git') }
                     '--write-mode' { @('strict', 'no-overwrite', 'skip-overwrite', 'overwrite', 'ask') }
-                    default        { @('--name', '-n', '--description', '-d', '--git', '--git-ref', '--no-cache', '--exclude', '--write-mode', '--help', '-h') }
+                    default        { @('--name', '-n', '--description', '-d', '--git', '--git-ref', '--exclude', '--write-mode', '--help', '-h') }
                 }
             }
             'change' {
                 switch ($prev) {
                     '--git'        { @('fresh', 'preserve', 'no-git', 'unset') }
                     '--write-mode' { @('strict', 'no-overwrite', 'skip-overwrite', 'overwrite', 'ask', 'unset') }
-                    '--no-cache'   { @('true', 'false', 'unset') }
                     'change'       { templative list --names-only 2>$null }
-                    default        { @('--name', '--description', '--unset-description', '--location', '--git', '--pre-init', '--unset-pre-init', '--post-init', '--unset-post-init', '--git-ref', '--unset-git-ref', '--no-cache', '--exclude', '--clear-exclude', '--write-mode', '--help', '-h') }
+                    default        { @('--name', '--description', '--unset-description', '--location', '--git', '--pre-init', '--unset-pre-init', '--post-init', '--unset-post-init', '--git-ref', '--unset-git-ref', '--exclude', '--clear-exclude', '--write-mode', '--help', '-h') }
                 }
             }
             'remove' {

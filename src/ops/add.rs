@@ -13,7 +13,6 @@ pub fn cmd_add(
     description: Option<String>,
     git: Option<GitMode>,
     git_ref: Option<String>,
-    no_cache: Option<bool>,
     exclude: Vec<String>,
     write_mode: Option<WriteMode>,
 ) -> Result<()> {
@@ -49,7 +48,6 @@ pub fn cmd_add(
         pre_init: None,
         post_init: None,
         git_ref,
-        no_cache,
         exclude: if exclude.is_empty() { None } else { Some(exclude) },
         write_mode,
     };

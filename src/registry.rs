@@ -25,8 +25,6 @@ pub struct Template {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub git_ref: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub no_cache: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub exclude: Option<Vec<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub write_mode: Option<WriteMode>,
@@ -153,7 +151,6 @@ mod tests {
             pre_init: None,
             post_init: None,
             git_ref: None,
-            no_cache: None,
             exclude: None,
             write_mode: None,
         }
@@ -205,7 +202,6 @@ mod tests {
         let template = &registry.templates[0];
         assert!(template.git.is_none());
         assert!(template.git_ref.is_none());
-        assert!(template.no_cache.is_none());
     }
 
     #[test]
@@ -216,7 +212,6 @@ mod tests {
         registry.templates.push(Template {
             git: Some(GitMode::Preserve),
             git_ref: Some("main".into()),
-            no_cache: Some(true),
             ..make_template(None)
         });
         registry.save_to_path(&path).unwrap();
@@ -224,7 +219,6 @@ mod tests {
         assert!(contents.contains("preserve"));
         assert!(contents.contains("git_ref"));
         assert!(contents.contains("main"));
-        assert!(contents.contains("no_cache"));
     }
 
     #[test]

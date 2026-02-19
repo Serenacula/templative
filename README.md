@@ -71,22 +71,11 @@ A default config is created automatically if there isn't one:
     // whether to display colors in `templative list`
     "color": true,
 
-    // whether to fetch & pull the template's repo before initialising
-    // always: update to the latest version for all templates
-    // only-url: only update for cached git repos, not local templates
-    // never: do not update git repos
-    "update_on_init": "only-url",
-
     // git init behaviour
     // fresh: start a new git
     // preserve: clone the original git
     // no-git: do not setup git
     "git": "fresh",
-
-    // whether to skip using the cache for git repos
-    // true: always pulls directly from the repo
-    // false: caches repos for quicker init
-    "no_cache": false,
 
     // files excluded when creating a new template - glob patterns are accepted
     "exclude": ["node_modules", ".DS_Store"],
@@ -134,7 +123,6 @@ By default optional fields are not set. In this case they fallback to the config
             // below are options that override the config behaviours
 
             "git": "fresh",
-            "no-cache": true,
             "exclude": ["target"],
             "write-mode": "ask"
         }
