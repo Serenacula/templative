@@ -90,10 +90,18 @@ fn col_width(header: &str, values: impl Iterator<Item = usize>) -> usize {
     values.max().unwrap_or(0).max(header.width())
 }
 
-pub fn cmd_list(color: bool) -> Result<()> {
+pub fn cmd_list(color: bool, names_only: bool) -> Result<()> {
     let registry = Registry::load()?;
     if registry.templates.is_empty() {
-        println!("no templates available: use `templative add <FOLDER>` to add a template");
+        if !names_only {
+            println!("no templates available: use `templative add <FOLDER>` to add a template");
+        }
+        return Ok(());
+    }
+    if names_only {
+        for tmpl in registry.templates_sorted() {
+            println!("{}", tmpl.name);
+        }
         return Ok(());
     }
 

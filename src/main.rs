@@ -186,7 +186,11 @@ enum Command {
         write_mode: Option<WriteModeChangeArg>,
     },
     /// List registered templates and their paths
-    List,
+    List {
+        /// Print only template names, one per line
+        #[arg(long = "names-only")]
+        names_only: bool,
+    },
 }
 
 fn git_mode_arg_to_mode(arg: GitModeArg) -> GitMode {
@@ -298,7 +302,7 @@ fn run() -> Result<()> {
                 write_mode: write_mode_change,
             })
         }
-        Command::List => ops::cmd_list(color),
+        Command::List { names_only } => ops::cmd_list(color, names_only),
     }
 }
 
