@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.3](https://github.com/Serenacula/templative/compare/v0.6.2...v0.6.3) - 2026-02-19
+
+### Added
+
+- support symlinks when copying templates
+
+### Fixed
+
+- address second review pass
+- address code review findings
+
+### Other
+
+- remove commit field, git_ref handles all ref pinning
+
 ## [0.6.2](https://github.com/Serenacula/templative/compare/v0.6.1...v0.6.2) - 2026-02-19
 
 ### Added
