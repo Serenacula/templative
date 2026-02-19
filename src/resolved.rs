@@ -93,9 +93,9 @@ mod tests {
 
     #[test]
     fn no_cache_resolves_from_template() {
-        let mut t = make_template(None);
-        t.no_cache = Some(true);
-        let resolved = ResolvedOptions::build(&make_config(GitMode::Fresh), &t, None);
+        let mut template = make_template(None);
+        template.no_cache = Some(true);
+        let resolved = ResolvedOptions::build(&make_config(GitMode::Fresh), &template, None);
         assert!(resolved.no_cache);
     }
 
@@ -111,17 +111,17 @@ mod tests {
     fn template_no_cache_overrides_config() {
         let mut config = make_config(GitMode::Fresh);
         config.no_cache = true;
-        let mut t = make_template(None);
-        t.no_cache = Some(false);
-        let resolved = ResolvedOptions::build(&config, &t, None);
+        let mut template = make_template(None);
+        template.no_cache = Some(false);
+        let resolved = ResolvedOptions::build(&config, &template, None);
         assert!(!resolved.no_cache);
     }
 
     #[test]
     fn git_ref_resolves_from_template() {
-        let mut t = make_template(None);
-        t.git_ref = Some("v1.0".into());
-        let resolved = ResolvedOptions::build(&make_config(GitMode::Fresh), &t, None);
+        let mut template = make_template(None);
+        template.git_ref = Some("v1.0".into());
+        let resolved = ResolvedOptions::build(&make_config(GitMode::Fresh), &template, None);
         assert_eq!(resolved.git_ref.as_deref(), Some("v1.0"));
     }
 

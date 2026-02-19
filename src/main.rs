@@ -175,13 +175,13 @@ fn run() -> Result<()> {
             git_ref,
             no_cache,
         } => {
-            let git_override = git.map(|g| match g {
+            let git_override = git.map(|git_arg| match git_arg {
                 GitModeChangeArg::Fresh => Some(GitMode::Fresh),
                 GitModeChangeArg::Preserve => Some(GitMode::Preserve),
                 GitModeChangeArg::NoGit => Some(GitMode::NoGit),
                 GitModeChangeArg::Unset => None,
             });
-            let no_cache_override = no_cache.map(|v| match v {
+            let no_cache_override = no_cache.map(|no_cache_arg| match no_cache_arg {
                 NoCacheOverride::Yes => Some(true),
                 NoCacheOverride::No => Some(false),
                 NoCacheOverride::Unset => None,

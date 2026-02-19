@@ -95,8 +95,11 @@ impl Registry {
     }
 
     pub fn add(&mut self, template: Template) -> Result<()> {
-        if self.templates.iter().any(|t| t.name == template.name) {
-            return Err(TemplativeError::TemplateExists { name: template.name }.into());
+        if self.templates.iter().any(|tmpl| tmpl.name == template.name) {
+            return Err(TemplativeError::TemplateExists {
+                name: template.name,
+            }
+            .into());
         }
         self.templates.push(template);
         Ok(())
@@ -106,7 +109,7 @@ impl Registry {
         let pos = self
             .templates
             .iter()
-            .position(|t| t.name == name)
+            .position(|tmpl| tmpl.name == name)
             .ok_or_else(|| TemplativeError::TemplateNotFound {
                 name: name.to_string(),
             })?;
@@ -115,11 +118,11 @@ impl Registry {
     }
 
     pub fn get(&self, name: &str) -> Option<&Template> {
-        self.templates.iter().find(|t| t.name == name)
+        self.templates.iter().find(|tmpl| tmpl.name == name)
     }
 
     pub fn get_mut(&mut self, name: &str) -> Option<&mut Template> {
-        self.templates.iter_mut().find(|t| t.name == name)
+        self.templates.iter_mut().find(|tmpl| tmpl.name == name)
     }
 
     pub fn templates_sorted(&self) -> Vec<&Template> {
@@ -196,10 +199,10 @@ mod tests {
         )
         .unwrap();
         let registry = Registry::load_from_path(&path).unwrap();
-        let t = &registry.templates[0];
-        assert!(t.git.is_none());
-        assert!(t.git_ref.is_none());
-        assert!(t.no_cache.is_none());
+        let template = &registry.templates[0];
+        assert!(template.git.is_none());
+        assert!(template.git_ref.is_none());
+        assert!(template.no_cache.is_none());
     }
 
     #[test]

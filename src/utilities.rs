@@ -47,16 +47,16 @@ pub fn run_hook(command: &str, working_dir: &std::path::Path) -> Result<()> {
     Ok(())
 }
 
-pub fn is_git_url(s: &str) -> bool {
-    s.starts_with("https://")
-        || s.starts_with("http://")
-        || s.starts_with("git@")
-        || s.starts_with("git://")
+pub fn is_git_url(url: &str) -> bool {
+    url.starts_with("https://")
+        || url.starts_with("http://")
+        || url.starts_with("git@")
+        || url.starts_with("git://")
 }
 
-fn fnv1a_hash(s: &str) -> u64 {
+fn fnv1a_hash(input: &str) -> u64 {
     let mut hash: u64 = 14695981039346656037;
-    for byte in s.bytes() {
+    for byte in input.bytes() {
         hash ^= byte as u64;
         hash = hash.wrapping_mul(1099511628211);
     }
@@ -106,16 +106,16 @@ mod tests {
 
     #[test]
     fn cache_path_for_url_is_deterministic() {
-        let a = cache_path_for_url("https://github.com/user/repo").unwrap();
-        let b = cache_path_for_url("https://github.com/user/repo").unwrap();
-        assert_eq!(a, b);
+        let path1 = cache_path_for_url("https://github.com/user/repo").unwrap();
+        let path2 = cache_path_for_url("https://github.com/user/repo").unwrap();
+        assert_eq!(path1, path2);
     }
 
     #[test]
     fn cache_path_for_url_differs_for_different_urls() {
-        let a = cache_path_for_url("https://github.com/user/repo-a").unwrap();
-        let b = cache_path_for_url("https://github.com/user/repo-b").unwrap();
-        assert_ne!(a, b);
+        let path1 = cache_path_for_url("https://github.com/user/repo-a").unwrap();
+        let path2 = cache_path_for_url("https://github.com/user/repo-b").unwrap();
+        assert_ne!(path1, path2);
     }
 
     #[test]
@@ -123,6 +123,6 @@ mod tests {
         let path = cache_path_for_url("https://github.com/user/repo").unwrap();
         let hex = path.file_name().unwrap().to_string_lossy();
         assert_eq!(hex.len(), 16);
-        assert!(hex.chars().all(|c| c.is_ascii_hexdigit()));
+        assert!(hex.chars().all(|character| character.is_ascii_hexdigit()));
     }
 }

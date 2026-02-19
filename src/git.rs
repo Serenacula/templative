@@ -103,7 +103,7 @@ pub fn ref_exists(repo: &Path, git_ref: &str) -> bool {
         .args(["cat-file", "-e", git_ref])
         .current_dir(repo)
         .output()
-        .map(|o| o.status.success())
+        .map(|output| output.status.success())
         .unwrap_or(false)
 }
 
@@ -119,7 +119,7 @@ pub fn classify_ref(repo: &Path, git_ref: &str) -> RefKind {
             .args(args)
             .current_dir(repo)
             .output()
-            .map(|o| o.status.success())
+            .map(|output| output.status.success())
             .unwrap_or(false)
     };
     if check(&["rev-parse", "--verify", &format!("refs/heads/{}", git_ref)]) {
