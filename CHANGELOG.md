@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.2](https://github.com/Serenacula/templative/compare/v0.6.1...v0.6.2) - 2026-02-19
+
+### Added
+
+- write mode for controlling file collision behaviour on init
+- configurable exclude patterns via glob matching
+- use #fcdd2a yellow with fallback to basic yellow for non-truecolor terminals
+
+### Fixed
+
+- apply row style to whole line; remove symlink states from list
+- apply row style to name column only
+- don't apply strikethrough style to name/status column padding
+- apply row style only to name and status columns
+
+### Other
+
+- clarify symlink planning notes
+- code quality pass
+- rename single-letter variables and clean up list command
+
 ## [0.6.1](https://github.com/Serenacula/templative/compare/v0.6.0...v0.6.1) - 2026-02-19
 
 ### Added
