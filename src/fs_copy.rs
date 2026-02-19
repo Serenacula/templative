@@ -1,5 +1,5 @@
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result};
 use dialoguer::Select;
@@ -69,9 +69,89 @@ fn prompt_file(dest_path: &Path) -> Result<FileChoice> {
     })
 }
 
+/// Computes a relative path from `from_dir` to `to`. Both must be absolute.
+fn relative_path_between(from_dir: &Path, to: &Path) -> PathBuf {
+    let from_components: Vec<_> = from_dir.components().collect();
+    let to_components: Vec<_> = to.components().collect();
+    let common_len = from_components
+        .iter()
+        .zip(to_components.iter())
+        .take_while(|(a, b)| a == b)
+        .count();
+    let mut result = PathBuf::new();
+    for _ in 0..(from_components.len() - common_len) {
+        result.push("..");
+    }
+    for component in &to_components[common_len..] {
+        result.push(component.as_os_str());
+    }
+    if result.as_os_str().is_empty() {
+        result.push(".");
+    }
+    result
+}
+
+/// Copies a symlink from `source_path` to `dest_path`, adjusting the target:
+/// - If target resolves inside the template, keeps a relative symlink.
+/// - If target resolves outside the template, creates an absolute symlink.
+/// - If the target cannot be found (broken symlink), warns and preserves the original target.
+fn copy_symlink(source_path: &Path, dest_path: &Path, source_dir: &Path, dest_dir: &Path) -> Result<()> {
+    let raw_target = fs::read_link(source_path)
+        .with_context(|| format!("failed to read symlink: {}", source_path.display()))?;
+
+    let source_parent = source_path.parent().unwrap_or(source_dir);
+    let absolute_target = if raw_target.is_absolute() {
+        raw_target.clone()
+    } else {
+        source_parent.join(&raw_target)
+    };
+
+    let new_target: PathBuf = match absolute_target.canonicalize() {
+        Ok(canonical_target) => {
+            let canonical_source = source_dir
+                .canonicalize()
+                .unwrap_or_else(|_| source_dir.to_path_buf());
+            if let Ok(target_rel) = canonical_target.strip_prefix(&canonical_source) {
+                if raw_target.is_relative() {
+                    // Same relative target works identically in the destination.
+                    raw_target
+                } else {
+                    // Absolute target inside template: compute relative from dest symlink location.
+                    let dest_parent = dest_path.parent().unwrap_or(dest_dir);
+                    let target_in_dest = dest_dir.join(target_rel);
+                    relative_path_between(dest_parent, &target_in_dest)
+                }
+            } else {
+                // Target is outside the template: use the canonical absolute path.
+                canonical_target
+            }
+        }
+        Err(_) => {
+            eprintln!(
+                "warning: symlink '{}' points to '{}' which does not exist; creating anyway",
+                source_path.display(),
+                raw_target.display()
+            );
+            raw_target
+        }
+    };
+
+    #[cfg(unix)]
+    std::os::unix::fs::symlink(&new_target, dest_path)
+        .with_context(|| format!("failed to create symlink: {}", dest_path.display()))?;
+
+    #[cfg(not(unix))]
+    {
+        let _ = new_target;
+        anyhow::bail!("symlinks are not supported on this platform");
+    }
+
+    Ok(())
+}
+
 /// Copy template from `source_dir` to `dest_dir`.
 /// `.git` is always excluded. `exclude` patterns are matched against each path
-/// component and the full relative path. Errors on symlinks. Preserves file permissions.
+/// component and the full relative path. Symlinks are recreated. Preserves file permissions.
 pub fn copy_template(
     source_dir: &Path,
     dest_dir: &Path,
@@ -106,13 +186,19 @@ pub fn copy_template(
         if path == source_dir {
             continue;
         }
-        if entry.path().is_symlink() {
-            return Err(TemplativeError::SymlinkNotSupported.into());
-        }
         let relative = path
             .strip_prefix(source_dir)
             .with_context(|| "strip_prefix")?;
         let dest_path = dest_dir.join(relative);
+
+        if entry.path().is_symlink() {
+            if let Some(parent) = dest_path.parent() {
+                fs::create_dir_all(parent)
+                    .with_context(|| format!("failed to create parent: {}", parent.display()))?;
+            }
+            copy_symlink(path, &dest_path, source_dir, dest_dir)?;
+            continue;
+        }
 
         if entry.file_type().is_dir() {
             fs::create_dir_all(&dest_path)
@@ -202,25 +288,57 @@ mod tests {
     }
 
     #[test]
-    fn errors_on_symlink() {
+    #[cfg(unix)]
+    fn relative_symlink_inside_template_preserved() {
         let temp = tempfile::tempdir().unwrap();
         let source = temp.path().join("template");
         let dest = temp.path().join("dest");
         fs::create_dir_all(&source).unwrap();
         fs::write(source.join("file.txt"), "content").unwrap();
-        #[cfg(unix)]
-        std::os::unix::fs::symlink(source.join("file.txt"), source.join("link.txt")).unwrap();
+        std::os::unix::fs::symlink("file.txt", source.join("link.txt")).unwrap();
 
-        let result = copy_template(&source, &dest, &default_exclude(), &WriteMode::Strict);
-        #[cfg(unix)]
-        assert!(result.is_err());
-        #[cfg(unix)]
-        assert!(matches!(
-            result.unwrap_err().downcast_ref::<TemplativeError>(),
-            Some(TemplativeError::SymlinkNotSupported)
-        ));
-        #[cfg(not(unix))]
-        let _ = result;
+        copy_template(&source, &dest, &[], &WriteMode::Strict).unwrap();
+
+        assert!(dest.join("file.txt").exists());
+        let link_target = fs::read_link(dest.join("link.txt")).unwrap();
+        assert_eq!(link_target, Path::new("file.txt"));
+        assert_eq!(fs::read_to_string(dest.join("link.txt")).unwrap(), "content");
+    }
+
+    #[test]
+    #[cfg(unix)]
+    fn broken_symlink_creates_with_original_target() {
+        let temp = tempfile::tempdir().unwrap();
+        let source = temp.path().join("template");
+        let dest = temp.path().join("dest");
+        fs::create_dir_all(&source).unwrap();
+        std::os::unix::fs::symlink("nonexistent.txt", source.join("broken.txt")).unwrap();
+
+        copy_template(&source, &dest, &[], &WriteMode::Strict).unwrap();
+
+        let link_target = fs::read_link(dest.join("broken.txt")).unwrap();
+        assert_eq!(link_target, Path::new("nonexistent.txt"));
+        // Dest symlink exists but is broken (target doesn't exist).
+        assert!(!dest.join("broken.txt").exists());
+        assert!(dest.join("broken.txt").symlink_metadata().is_ok());
+    }
+
+    #[test]
+    #[cfg(unix)]
+    fn symlink_outside_template_becomes_absolute() {
+        let temp = tempfile::tempdir().unwrap();
+        let external = temp.path().join("external.txt");
+        fs::write(&external, "external content").unwrap();
+        let source = temp.path().join("template");
+        let dest = temp.path().join("dest");
+        fs::create_dir_all(&source).unwrap();
+        std::os::unix::fs::symlink(&external, source.join("link.txt")).unwrap();
+
+        copy_template(&source, &dest, &[], &WriteMode::Strict).unwrap();
+
+        let link_target = fs::read_link(dest.join("link.txt")).unwrap();
+        assert!(link_target.is_absolute());
+        assert_eq!(fs::read_to_string(dest.join("link.txt")).unwrap(), "external content");
     }
 
     #[test]

@@ -17,9 +17,6 @@ pub enum TemplativeError {
     #[error("template path missing or unreadable: {path:?}")]
     TemplatePathMissing { path: PathBuf },
 
-    #[error("symlinks not supported yet")]
-    SymlinkNotSupported,
-
     #[error("unsupported registry version {found} (expected {expected}); delete {path} to start fresh")]
     UnsupportedRegistryVersion {
         found: u32,
