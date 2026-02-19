@@ -21,19 +21,15 @@ struct Row {
 fn template_status(tmpl: &Template) -> (String, Style) {
     let path = PathBuf::from(&tmpl.location);
     let is_url = utilities::is_git_url(&tmpl.location);
-    let is_sym = !is_url && path.is_symlink();
-    let is_broken_sym = is_sym && !path.exists();
-    let is_missing = !is_url && !is_sym && !path.exists();
-    let is_file = !is_url && !is_missing && !is_broken_sym && !is_sym && path.is_file();
-    let is_empty = !is_url && !is_missing && !is_broken_sym && !is_file
+    let is_missing = !is_url && !path.exists();
+    let is_file = !is_url && !is_missing && path.is_file();
+    let is_empty = !is_url && !is_missing && !is_file
         && utilities::is_dir_empty(&path).unwrap_or(false);
-    let has_no_git = !is_url && !is_missing && !is_broken_sym && !is_file && !is_empty
+    let has_no_git = !is_url && !is_missing && !is_file && !is_empty
         && !path.join(".git").exists();
 
     if is_missing {
         ("(folder missing)".into(), Style::RedThrough)
-    } else if is_broken_sym {
-        ("(symlink broken)".into(), Style::RedThrough)
     } else if is_empty {
         ("(folder empty)".into(), Style::Red)
     } else if let Some(ref_val) = tmpl.commit.as_deref().or(tmpl.git_ref.as_deref()) {
@@ -65,8 +61,6 @@ fn template_status(tmpl: &Template) -> (String, Style) {
         }
     } else if is_file {
         ("(single file)".into(), Style::Blue)
-    } else if is_sym {
-        ("(symlink)".into(), Style::Blue)
     } else if has_no_git {
         ("(no git)".into(), Style::Yellow)
     } else {
@@ -130,13 +124,11 @@ pub fn cmd_list() -> Result<()> {
     println!("{}  {}", header, "LOCATION".underline());
 
     for row in &rows {
-        let name_pad = " ".repeat(name_w.saturating_sub(row.name.width()));
-        let mut line = format!("{}{}", apply_style(row.name.clone(), &row.style), name_pad);
-        if show_status {
-            line = format!("{}  {}", line, pad(&row.status, status_w));
-        }
-        if show_desc { line = format!("{}  {}", line, pad(&row.description, desc_w)); }
-        println!("{}  {}", line, row.location);
+        let mut line = pad(&row.name, name_w);
+        if show_status { line = format!("{}  {}", line, pad(&row.status, status_w)); }
+        if show_desc   { line = format!("{}  {}", line, pad(&row.description, desc_w)); }
+        let line = format!("{}  {}", line, row.location);
+        println!("{}", apply_style(line, &row.style));
     }
     Ok(())
 }
