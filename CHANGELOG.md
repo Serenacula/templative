@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.4](https://github.com/Serenacula/templative/compare/v0.6.3...v0.6.4) - 2026-02-19
+
+### Added
+
+- add completions subcommand for zsh, bash, fish, and powershell
+- add --names-only flag to list for autocomplete support
+- add --color/--no-color flags; no-overwrite pre-flights collisions
+
+### Fixed
+
+- rename no-cache unset value from none to unset
+- remove global flag from --color/--no-color
+
+### Other
+
+- remove cargo install from readme
+- add install section with completions setup instructions
+
 ## [0.6.3](https://github.com/Serenacula/templative/compare/v0.6.2...v0.6.3) - 2026-02-19
 
 ### Added
