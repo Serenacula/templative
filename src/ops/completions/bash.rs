@@ -24,7 +24,11 @@ _templative() {
         init)
           COMPREPLY=($(compgen -W "$(templative list --names-only 2>/dev/null)" -- "$cur")) ;;
         *)
-          COMPREPLY=($(compgen -W "--git --write-mode --help -h" -- "$cur")) ;;
+          if [[ $COMP_CWORD -eq 3 ]]; then
+            COMPREPLY=($(compgen -d -- "$cur"))
+          else
+            COMPREPLY=($(compgen -W "--git --write-mode --help -h" -- "$cur"))
+          fi ;;
       esac
       ;;
     add)
@@ -35,6 +39,8 @@ _templative() {
           COMPREPLY=($(compgen -W "strict no-overwrite skip-overwrite overwrite ask" -- "$cur")) ;;
         --name|-n|--description|-d|--git-ref|--exclude)
           ;;
+        add)
+          COMPREPLY=($(compgen -d -- "$cur")) ;;
         *)
           COMPREPLY=($(compgen -W "--name -n --description -d --git --git-ref --no-cache --exclude --write-mode --help -h" -- "$cur")) ;;
       esac

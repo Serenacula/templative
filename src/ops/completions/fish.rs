@@ -18,12 +18,30 @@ complete -c templative -n 'not __fish_seen_subcommand_from init add change remov
 complete -c templative -n 'not __fish_seen_subcommand_from init add change remove list completions' -a list -d 'List registered templates'
 complete -c templative -n 'not __fish_seen_subcommand_from init add change remove list completions' -a completions -d 'Generate shell completion scripts'
 
+# Returns true when 'init' has been given and at least one non-flag argument follows it
+function __templative_init_has_template
+    set -l tokens (commandline -poc)
+    set -l past_init 0
+    set -l count 0
+    for token in $tokens
+        if test $past_init -eq 1; and not string match -qr -- '^-' $token
+            set count (math $count + 1)
+        end
+        if test $token = init
+            set past_init 1
+        end
+    end
+    test $count -ge 1
+end
+
 # init
 complete -c templative -n '__fish_seen_subcommand_from init' -a '(templative list --names-only 2>/dev/null)'
+complete -c templative -n '__fish_seen_subcommand_from init; and __templative_init_has_template' -F -d 'Target directory'
 complete -c templative -n '__fish_seen_subcommand_from init' -l git -d 'Git mode' -a 'fresh preserve no-git' -r
 complete -c templative -n '__fish_seen_subcommand_from init' -l write-mode -d 'Write mode' -a 'strict no-overwrite skip-overwrite overwrite ask' -r
 
 # add
+complete -c templative -n '__fish_seen_subcommand_from add' -F -d 'Template directory'
 complete -c templative -n '__fish_seen_subcommand_from add' -s n -l name -d 'Template name' -r
 complete -c templative -n '__fish_seen_subcommand_from add' -s d -l description -d 'Description' -r
 complete -c templative -n '__fish_seen_subcommand_from add' -l git -d 'Git mode' -a 'fresh preserve no-git' -r
