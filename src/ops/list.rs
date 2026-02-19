@@ -130,9 +130,11 @@ pub fn cmd_list() -> Result<()> {
     println!("{}  {}", header, "LOCATION".underline());
 
     for row in &rows {
-        let mut line = apply_style(pad(&row.name, name_w), &row.style);
+        let name_pad = " ".repeat(name_w.saturating_sub(row.name.width()));
+        let mut line = format!("{}{}", apply_style(row.name.clone(), &row.style), name_pad);
         if show_status {
-            line = format!("{}  {}", line, apply_style(pad(&row.status, status_w), &row.style));
+            let status_pad = " ".repeat(status_w.saturating_sub(row.status.width()));
+            line = format!("{}  {}{}", line, apply_style(row.status.clone(), &row.style), status_pad);
         }
         if show_desc { line = format!("{}  {}", line, pad(&row.description, desc_w)); }
         println!("{}  {}", line, row.location);
