@@ -8,7 +8,7 @@ use crate::registry::Registry;
 
 pub struct ChangeOptions {
     pub name: Option<String>,
-    pub description: Option<String>,
+    pub description: Option<Option<String>>,
     pub location: Option<PathBuf>,
     pub git: Option<Option<GitMode>>,
     pub pre_init: Option<Option<String>>,
@@ -53,7 +53,7 @@ pub fn cmd_change(template_name: String, options: ChangeOptions) -> Result<()> {
     let template = registry.get_mut(&template_name).unwrap();
 
     if let Some(new_name) = options.name { template.name = new_name; }
-    if let Some(new_description) = options.description { template.description = Some(new_description); }
+    if let Some(new_description) = options.description { template.description = new_description; }
     if let Some(new_git) = options.git { template.git = new_git; }
     if let Some(new_location) = options.location {
         let canonical = new_location

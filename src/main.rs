@@ -139,6 +139,9 @@ enum Command {
         /// New description
         #[arg(long)]
         description: Option<String>,
+        /// Clear the description
+        #[arg(long = "unset-description")]
+        unset_description: bool,
         /// New location
         #[arg(long)]
         location: Option<PathBuf>,
@@ -232,6 +235,7 @@ fn run() -> Result<()> {
             template_name,
             name,
             description,
+            unset_description,
             location,
             git,
             pre_init,
@@ -273,7 +277,7 @@ fn run() -> Result<()> {
             });
             ops::cmd_change(template_name, ChangeOptions {
                 name,
-                description,
+                description: if unset_description { Some(None) } else { description.map(Some) },
                 location,
                 git: git_override,
                 pre_init: if unset_pre_init { Some(None) } else { pre_init.map(Some) },

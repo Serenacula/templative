@@ -55,10 +55,13 @@ pub fn is_git_url(url: &str) -> bool {
 }
 
 fn fnv1a_hash(input: &str) -> u64 {
-    let mut hash: u64 = 14695981039346656037;
+    // FNV-1a 64-bit: standard constants from https://www.isthe.com/chongo/tech/comp/fnv/
+    const OFFSET_BASIS: u64 = 14695981039346656037; // 0xcbf29ce484222325
+    const PRIME: u64 = 1099511628211;               // 0x00000100000001b3
+    let mut hash = OFFSET_BASIS;
     for byte in input.bytes() {
         hash ^= byte as u64;
-        hash = hash.wrapping_mul(1099511628211);
+        hash = hash.wrapping_mul(PRIME);
     }
     hash
 }

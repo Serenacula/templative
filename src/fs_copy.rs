@@ -191,7 +191,7 @@ pub fn copy_template(
             .with_context(|| "strip_prefix")?;
         let dest_path = dest_dir.join(relative);
 
-        if entry.path().is_symlink() {
+        if path.is_symlink() {
             if let Some(parent) = dest_path.parent() {
                 fs::create_dir_all(parent)
                     .with_context(|| format!("failed to create parent: {}", parent.display()))?;

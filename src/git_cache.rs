@@ -13,9 +13,8 @@ pub fn ensure_cached(url: &str) -> Result<PathBuf> {
     Ok(cache_path)
 }
 
-/// Fetch and attempt reset to origin/HEAD. Non-fatal if origin/HEAD is unset.
-pub fn update_cache(cache_path: &Path) -> Result<()> {
-    git::fetch_origin(cache_path)?;
+/// Fetch and attempt reset to origin/HEAD. Fully non-fatal: network or ref errors are ignored.
+pub fn update_cache(cache_path: &Path) {
+    let _ = git::fetch_origin(cache_path);
     let _ = git::reset_hard_origin(cache_path);
-    Ok(())
 }

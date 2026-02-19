@@ -65,7 +65,7 @@ fn template_status(tmpl: &Template) -> (String, Style) {
         && !path.join(".git").exists();
 
     if is_missing {
-        return ("(folder missing)".into(), Style::RedThrough);
+        return ("(template missing)".into(), Style::RedThrough);
     }
     if is_empty {
         return ("(folder empty)".into(), Style::Red);

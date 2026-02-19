@@ -29,10 +29,9 @@ fn resolve_template_path(
             Ok((path, Some(tempdir)))
         } else {
             let cache_path = git_cache::ensure_cached(location)?;
-            let should_update = resolved.git_ref.is_none()
-                && resolved.update_on_init != UpdateOnInit::Never;
+            let should_update = resolved.update_on_init != UpdateOnInit::Never;
             if should_update {
-                let _ = git_cache::update_cache(&cache_path);
+                git_cache::update_cache(&cache_path);
             }
             if let Some(ref git_ref) = resolved.git_ref {
                 git::checkout_ref(&cache_path, git_ref)?;
