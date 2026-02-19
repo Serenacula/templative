@@ -6,38 +6,39 @@ Git is initialized by default (with an initial commit) when you create a project
 
 ## Install
 
-```sh
-cargo install templative
-```
-
-Or download a pre-built binary from the [releases page](https://github.com/serenacula/templative/releases).
+Download a pre-built binary from the [releases page](https://github.com/serenacula/templative/releases).
 
 ### Completions
 
 Generate a completion script for your shell and place it where your shell expects it.
 
 **zsh** — add to a directory in `$fpath`, e.g.:
+
 ```sh
 templative completions zsh > ~/.zsh/completions/_templative
 ```
 
 **bash** — source from your `.bashrc`:
+
 ```sh
 templative completions bash > ~/.bash_completions/templative
 echo 'source ~/.bash_completions/templative' >> ~/.bashrc
 ```
 
 **fish**:
+
 ```sh
 templative completions fish > ~/.config/fish/completions/templative.fish
 ```
 
 **powershell** — add to your profile:
+
 ```sh
 templative completions powershell >> $PROFILE
 ```
 
 To check whether an installed script is up to date after upgrading templative:
+
 ```sh
 templative completions zsh --check ~/.zsh/completions/_templative
 ```
