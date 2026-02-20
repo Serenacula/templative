@@ -117,10 +117,11 @@ enum Command {
         #[arg(long = "write-mode")]
         write_mode: Option<WriteModeArg>,
     },
-    /// Remove a template from the registry
+    /// Remove one or more templates from the registry
     Remove {
-        /// Template name
-        template_name: String,
+        /// Template name(s)
+        #[arg(required = true, num_args = 1..)]
+        template_names: Vec<String>,
     },
     /// Update fields on a registered template
     Change {
@@ -169,6 +170,12 @@ enum Command {
         #[arg(long = "write-mode")]
         write_mode: Option<WriteModeChangeArg>,
     },
+    /// List registered templates and their paths
+    List {
+        /// Print only template names, one per line
+        #[arg(long = "names-only")]
+        names_only: bool,
+    },
     /// Generate a shell completion script
     Completions {
         /// Shell to generate completions for
@@ -176,12 +183,6 @@ enum Command {
         /// Check if an installed script is up to date
         #[arg(long)]
         check: Option<PathBuf>,
-    },
-    /// List registered templates and their paths
-    List {
-        /// Print only template names, one per line
-        #[arg(long = "names-only")]
-        names_only: bool,
     },
     /// Update cached git templates
     Update {
@@ -214,10 +215,15 @@ fn write_mode_arg_to_mode(arg: WriteModeArg) -> WriteMode {
 fn run() -> Result<()> {
     let cli = Cli::parse();
     let config = config::Config::load()?;
-    let color = if cli.no_color { false }
-        else if cli.color { true }
-        else if std::env::var_os("NO_COLOR").is_some() { false }
-        else { config.color };
+    let color = if cli.no_color {
+        false
+    } else if cli.color {
+        true
+    } else if std::env::var_os("NO_COLOR").is_some() {
+        false
+    } else {
+        config.color
+    };
     match cli.command {
         Command::Init {
             template_name,
@@ -227,7 +233,13 @@ fn run() -> Result<()> {
         } => {
             let git_flag = git.map(git_mode_arg_to_mode);
             let write_mode_flag = write_mode.map(write_mode_arg_to_mode);
-            ops::cmd_init(config, template_name, target_path, git_flag, write_mode_flag)
+            ops::cmd_init(
+                config,
+                template_name,
+                target_path,
+                git_flag,
+                write_mode_flag,
+            )
         }
         Command::Add {
             path,
@@ -240,9 +252,17 @@ fn run() -> Result<()> {
         } => {
             let git_flag = git.map(git_mode_arg_to_mode);
             let write_mode_flag = write_mode.map(write_mode_arg_to_mode);
-            ops::cmd_add(path, name, description, git_flag, git_ref, exclude, write_mode_flag)
+            ops::cmd_add(
+                path,
+                name,
+                description,
+                git_flag,
+                git_ref,
+                exclude,
+                write_mode_flag,
+            )
         }
-        Command::Remove { template_name } => ops::cmd_remove(template_name),
+        Command::Remove { template_names } => ops::cmd_remove(template_names),
         Command::Change {
             template_name,
             name,
@@ -281,21 +301,43 @@ fn run() -> Result<()> {
                 WriteModeChangeArg::Overwrite => Some(WriteMode::Overwrite),
                 WriteModeChangeArg::Ask => Some(WriteMode::Ask),
             });
-            ops::cmd_change(template_name, ChangeOptions {
-                name,
-                description: if unset_description { Some(None) } else { description.map(Some) },
-                location,
-                git: git_override,
-                pre_init: if unset_pre_init { Some(None) } else { pre_init.map(Some) },
-                post_init: if unset_post_init { Some(None) } else { post_init.map(Some) },
-                git_ref: if unset_git_ref { Some(None) } else { git_ref.map(Some) },
-                exclude: exclude_change,
-                write_mode: write_mode_change,
-            })
+            ops::cmd_change(
+                template_name,
+                ChangeOptions {
+                    name,
+                    description: if unset_description {
+                        Some(None)
+                    } else {
+                        description.map(Some)
+                    },
+                    location,
+                    git: git_override,
+                    pre_init: if unset_pre_init {
+                        Some(None)
+                    } else {
+                        pre_init.map(Some)
+                    },
+                    post_init: if unset_post_init {
+                        Some(None)
+                    } else {
+                        post_init.map(Some)
+                    },
+                    git_ref: if unset_git_ref {
+                        Some(None)
+                    } else {
+                        git_ref.map(Some)
+                    },
+                    exclude: exclude_change,
+                    write_mode: write_mode_change,
+                },
+            )
         }
         Command::Completions { shell, check } => ops::cmd_completions(shell, check),
         Command::List { names_only } => ops::cmd_list(color, names_only),
-        Command::Update { template_name, check } => ops::cmd_update(template_name, check),
+        Command::Update {
+            template_name,
+            check,
+        } => ops::cmd_update(template_name, check),
     }
 }
 
