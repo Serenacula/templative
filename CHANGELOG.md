@@ -7,41 +7,64 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.4](https://github.com/Serenacula/templative/compare/v0.6.3...v0.6.4) - 2026-02-20
+
+### Added
+
+-   add completions subcommand for zsh, bash, fish, and powershell
+-   add --names-only flag to list for autocomplete support
+-   add --color/--no-color flags; no-overwrite pre-flights collisions
+
+## Removed
+
+-   remove no_cache/update_on_init, always-fetch cache, fix git_ref temp clone, fix pre-init ordering
+
+### Fixed
+
+-   add directory completion for init path and add path in bash and fish
+-   rename no-cache unset value from none to unset
+-   remove global flag from --color/--no-color
+
+### Other
+
+-   remove cargo install from readme
+-   add install section with completions setup instructions
+
 ## [0.6.3](https://github.com/Serenacula/templative/compare/v0.6.2...v0.6.3) - 2026-02-19
 
 ### Added
 
-- support symlinks when copying templates
+-   support symlinks when copying templates
 
 ### Fixed
 
-- address second review pass
-- address code review findings
+-   address second review pass
+-   address code review findings
 
 ### Other
 
-- remove commit field, git_ref handles all ref pinning
+-   remove commit field, git_ref handles all ref pinning
 
 ## [0.6.2](https://github.com/Serenacula/templative/compare/v0.6.1...v0.6.2) - 2026-02-19
 
 ### Added
 
-- write mode for controlling file collision behaviour on init
-- configurable exclude patterns via glob matching
-- use #fcdd2a yellow with fallback to basic yellow for non-truecolor terminals
+-   write mode for controlling file collision behaviour on init
+-   configurable exclude patterns via glob matching
+-   use #fcdd2a yellow with fallback to basic yellow for non-truecolor terminals
 
 ### Fixed
 
-- apply row style to whole line; remove symlink states from list
-- apply row style to name column only
-- don't apply strikethrough style to name/status column padding
-- apply row style only to name and status columns
+-   apply row style to whole line; remove symlink states from list
+-   apply row style to name column only
+-   don't apply strikethrough style to name/status column padding
+-   apply row style only to name and status columns
 
 ### Other
 
-- clarify symlink planning notes
-- code quality pass
-- rename single-letter variables and clean up list command
+-   clarify symlink planning notes
+-   code quality pass
+-   rename single-letter variables and clean up list command
 
 ## [0.6.1](https://github.com/Serenacula/templative/compare/v0.6.0...v0.6.1) - 2026-02-19
 
