@@ -67,12 +67,6 @@ enum WriteModeChangeArg {
 struct Cli {
     #[arg(short = 'v', long, action = clap::ArgAction::Version)]
     version: Option<bool>,
-    /// Force coloured output
-    #[arg(long, overrides_with = "no_color")]
-    color: bool,
-    /// Disable coloured output
-    #[arg(long = "no-color", overrides_with = "color")]
-    no_color: bool,
     #[command(subcommand)]
     command: Command,
 }
@@ -175,6 +169,12 @@ enum Command {
         /// Print only template names, one per line
         #[arg(long = "names-only")]
         names_only: bool,
+        /// Force coloured output
+        #[arg(long, overrides_with = "no_color")]
+        color: bool,
+        /// Disable coloured output
+        #[arg(long = "no-color", overrides_with = "color")]
+        no_color: bool,
     },
     /// Generate a shell completion script
     Completions {
@@ -215,15 +215,6 @@ fn write_mode_arg_to_mode(arg: WriteModeArg) -> WriteMode {
 fn run() -> Result<()> {
     let cli = Cli::parse();
     let config = config::Config::load()?;
-    let color = if cli.no_color {
-        false
-    } else if cli.color {
-        true
-    } else if std::env::var_os("NO_COLOR").is_some() {
-        false
-    } else {
-        config.color
-    };
     match cli.command {
         Command::Init {
             template_name,
@@ -333,7 +324,13 @@ fn run() -> Result<()> {
             )
         }
         Command::Completions { shell, check } => ops::cmd_completions(shell, check),
-        Command::List { names_only } => ops::cmd_list(color, names_only),
+        Command::List { names_only, color, no_color } => {
+            let color = if no_color { false }
+                else if color { true }
+                else if std::env::var_os("NO_COLOR").is_some() { false }
+                else { config.color };
+            ops::cmd_list(color, names_only)
+        }
         Command::Update {
             template_name,
             check,
