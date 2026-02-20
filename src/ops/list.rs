@@ -83,6 +83,18 @@ fn template_status(tmpl: &Template) -> (String, Style) {
     if has_no_git {
         return ("(no git)".into(), Style::Yellow);
     }
+    // Check if update available (no network call; uses cached remote tracking refs)
+    if utilities::is_git_url(&tmpl.location) {
+        if let Ok(cache_path) = utilities::cache_path_for_url(&tmpl.location) {
+            if git::is_behind_remote(&cache_path) {
+                return ("(update available)".into(), Style::Yellow);
+            }
+        }
+    } else if git::is_git_repo(&path) {
+        if git::is_behind_remote(&path) {
+            return ("(update available)".into(), Style::Yellow);
+        }
+    }
     (String::new(), Style::Normal)
 }
 

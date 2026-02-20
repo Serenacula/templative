@@ -1,12 +1,12 @@
-pub const VERSION: u32 = 2;
+pub const VERSION: u32 = 3;
 
-pub const SCRIPT: &str = r#"# templative-completions-version: 2
+pub const SCRIPT: &str = r#"# templative-completions-version: 3
 
 Register-ArgumentCompleter -Native -CommandName templative -ScriptBlock {
     param($wordToComplete, $commandAst, $cursorPosition)
 
     $words = $commandAst.CommandElements
-    $subcommands = @('init', 'add', 'change', 'remove', 'list', 'completions')
+    $subcommands = @('init', 'add', 'change', 'remove', 'list', 'completions', 'update')
 
     $subcommand = $null
     foreach ($word in $words[1..($words.Count - 1)]) {
@@ -57,6 +57,12 @@ Register-ArgumentCompleter -Native -CommandName templative -ScriptBlock {
                     '--check'      { @() }
                     'completions'  { @('zsh', 'bash', 'fish', 'powershell') }
                     default        { @('zsh', 'bash', 'fish', 'powershell', '--check', '--help', '-h') }
+                }
+            }
+            'update' {
+                switch ($prev) {
+                    'update'  { templative list --names-only 2>$null }
+                    default   { @('--check', '--help', '-h') }
                 }
             }
         }

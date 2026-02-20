@@ -1,7 +1,7 @@
-pub const VERSION: u32 = 2;
+pub const VERSION: u32 = 3;
 
 pub const SCRIPT: &str = r#"#compdef templative
-# templative-completions-version: 2
+# templative-completions-version: 3
 
 _templative_template_names() {
   local -a names
@@ -29,6 +29,7 @@ _templative() {
         'remove:Remove a template from the registry'
         'list:List registered templates'
         'completions:Generate shell completion scripts'
+        'update:Update cached git templates'
       )
       _describe 'command' commands
       ;;
@@ -81,6 +82,11 @@ _templative() {
           _arguments \
             '--check[Check if installed script is up to date]:path:_files' \
             '1:shell:(zsh bash fish powershell)'
+          ;;
+        update)
+          _arguments \
+            '--check[Check for updates without applying]' \
+            '1:template:_templative_template_names'
           ;;
       esac
       ;;

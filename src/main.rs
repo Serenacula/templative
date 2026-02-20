@@ -183,6 +183,14 @@ enum Command {
         #[arg(long = "names-only")]
         names_only: bool,
     },
+    /// Update cached git templates
+    Update {
+        /// Template name (omit to update all)
+        template_name: Option<String>,
+        /// Check for updates without applying them
+        #[arg(long)]
+        check: bool,
+    },
 }
 
 fn git_mode_arg_to_mode(arg: GitModeArg) -> GitMode {
@@ -287,6 +295,7 @@ fn run() -> Result<()> {
         }
         Command::Completions { shell, check } => ops::cmd_completions(shell, check),
         Command::List { names_only } => ops::cmd_list(color, names_only),
+        Command::Update { template_name, check } => ops::cmd_update(template_name, check),
     }
 }
 

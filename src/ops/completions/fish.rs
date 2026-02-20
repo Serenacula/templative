@@ -1,22 +1,23 @@
-pub const VERSION: u32 = 2;
+pub const VERSION: u32 = 3;
 
-pub const SCRIPT: &str = r#"# templative-completions-version: 2
+pub const SCRIPT: &str = r#"# templative-completions-version: 3
 
 # Disable file completion globally
 complete -c templative -f
 
 # Global flags
-complete -c templative -n 'not __fish_seen_subcommand_from init add change remove list completions' -l color -d 'Force coloured output'
-complete -c templative -n 'not __fish_seen_subcommand_from init add change remove list completions' -l no-color -d 'Disable coloured output'
-complete -c templative -n 'not __fish_seen_subcommand_from init add change remove list completions' -s v -l version -d 'Print version'
+complete -c templative -n 'not __fish_seen_subcommand_from init add change remove list completions update' -l color -d 'Force coloured output'
+complete -c templative -n 'not __fish_seen_subcommand_from init add change remove list completions update' -l no-color -d 'Disable coloured output'
+complete -c templative -n 'not __fish_seen_subcommand_from init add change remove list completions update' -s v -l version -d 'Print version'
 
 # Subcommands
-complete -c templative -n 'not __fish_seen_subcommand_from init add change remove list completions' -a init -d 'Copy a template into a directory'
-complete -c templative -n 'not __fish_seen_subcommand_from init add change remove list completions' -a add -d 'Register a directory or git URL as a template'
-complete -c templative -n 'not __fish_seen_subcommand_from init add change remove list completions' -a change -d 'Update fields on a registered template'
-complete -c templative -n 'not __fish_seen_subcommand_from init add change remove list completions' -a remove -d 'Remove a template from the registry'
-complete -c templative -n 'not __fish_seen_subcommand_from init add change remove list completions' -a list -d 'List registered templates'
-complete -c templative -n 'not __fish_seen_subcommand_from init add change remove list completions' -a completions -d 'Generate shell completion scripts'
+complete -c templative -n 'not __fish_seen_subcommand_from init add change remove list completions update' -a init -d 'Copy a template into a directory'
+complete -c templative -n 'not __fish_seen_subcommand_from init add change remove list completions update' -a add -d 'Register a directory or git URL as a template'
+complete -c templative -n 'not __fish_seen_subcommand_from init add change remove list completions update' -a change -d 'Update fields on a registered template'
+complete -c templative -n 'not __fish_seen_subcommand_from init add change remove list completions update' -a remove -d 'Remove a template from the registry'
+complete -c templative -n 'not __fish_seen_subcommand_from init add change remove list completions update' -a list -d 'List registered templates'
+complete -c templative -n 'not __fish_seen_subcommand_from init add change remove list completions update' -a completions -d 'Generate shell completion scripts'
+complete -c templative -n 'not __fish_seen_subcommand_from init add change remove list completions update' -a update -d 'Update cached git templates'
 
 # Returns true when 'init' has been given and at least one non-flag argument follows it
 function __templative_init_has_template
@@ -75,4 +76,8 @@ complete -c templative -n '__fish_seen_subcommand_from list' -l names-only -d 'P
 # completions
 complete -c templative -n '__fish_seen_subcommand_from completions' -a 'zsh bash fish powershell'
 complete -c templative -n '__fish_seen_subcommand_from completions' -l check -d 'Check if installed script is up to date' -r -F
+
+# update
+complete -c templative -n '__fish_seen_subcommand_from update' -a '(templative list --names-only 2>/dev/null)'
+complete -c templative -n '__fish_seen_subcommand_from update' -l check -d 'Check for updates without applying'
 "#;

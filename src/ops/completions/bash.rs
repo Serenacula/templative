@@ -1,11 +1,11 @@
-pub const VERSION: u32 = 2;
+pub const VERSION: u32 = 3;
 
-pub const SCRIPT: &str = r#"# templative-completions-version: 2
+pub const SCRIPT: &str = r#"# templative-completions-version: 3
 
 _templative() {
   local cur="${COMP_WORDS[$COMP_CWORD]}"
   local prev="${COMP_WORDS[$COMP_CWORD-1]}"
-  local subcommands="init add change remove list completions"
+  local subcommands="init add change remove list completions update"
 
   if [[ $COMP_CWORD -eq 1 ]]; then
     COMPREPLY=($(compgen -W "$subcommands --color --no-color --version -v --help -h" -- "$cur"))
@@ -79,6 +79,14 @@ _templative() {
           COMPREPLY=($(compgen -W "zsh bash fish powershell" -- "$cur")) ;;
         *)
           COMPREPLY=($(compgen -W "zsh bash fish powershell --check --help -h" -- "$cur")) ;;
+      esac
+      ;;
+    update)
+      case "$prev" in
+        update)
+          COMPREPLY=($(compgen -W "$(templative list --names-only 2>/dev/null)" -- "$cur")) ;;
+        *)
+          COMPREPLY=($(compgen -W "--check --help -h" -- "$cur")) ;;
       esac
       ;;
   esac

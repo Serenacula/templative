@@ -134,3 +134,138 @@ pub fn add_and_commit(target_path: &Path, template_name: &str) -> Result<()> {
     initial_commit(target_path, template_name)?;
     Ok(())
 }
+
+/// Returns true if the path contains a `.git` directory.
+pub fn is_git_repo(path: &Path) -> bool {
+    path.join(".git").exists()
+}
+
+/// `git pull --ff-only`. Fails if fast-forward is not possible.
+pub fn pull_ff_only(repo: &Path) -> Result<()> {
+    run_git(Some(repo), &["pull", "--ff-only"])
+}
+
+fn git_rev_parse(repo: &Path, refspec: &str) -> Result<String> {
+    let output = Command::new("git")
+        .args(["rev-parse", refspec])
+        .current_dir(repo)
+        .output()
+        .context("failed to execute git")?;
+    if !output.status.success() {
+        anyhow::bail!("git rev-parse {} failed", refspec);
+    }
+    Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
+}
+
+/// Compares local HEAD to upstream (tries `@{u}` then `origin/HEAD`).
+/// Returns true if upstream has commits not in HEAD. Returns false if
+/// upstream cannot be determined. No network call.
+pub fn is_behind_remote(repo: &Path) -> bool {
+    let Ok(local_sha) = git_rev_parse(repo, "HEAD") else { return false; };
+    if local_sha.is_empty() {
+        return false;
+    }
+    let upstream_sha = git_rev_parse(repo, "@{u}")
+        .or_else(|_| git_rev_parse(repo, "origin/HEAD"))
+        .unwrap_or_default();
+    if upstream_sha.is_empty() {
+        return false;
+    }
+    local_sha != upstream_sha
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tempfile::tempdir;
+
+    fn git_test(dir: &Path, args: &[&str]) {
+        let status = Command::new("git")
+            .args(args)
+            .current_dir(dir)
+            .env("GIT_AUTHOR_NAME", "Test")
+            .env("GIT_AUTHOR_EMAIL", "test@test.com")
+            .env("GIT_COMMITTER_NAME", "Test")
+            .env("GIT_COMMITTER_EMAIL", "test@test.com")
+            .status()
+            .unwrap();
+        assert!(status.success(), "git {:?} failed", args);
+    }
+
+    fn setup_repo(dir: &Path) {
+        git_test(dir, &["init"]);
+        std::fs::write(dir.join("file.txt"), "v1").unwrap();
+        git_test(dir, &["add", "-A"]);
+        git_test(dir, &["commit", "-m", "initial"]);
+    }
+
+    #[test]
+    fn is_git_repo_returns_false_for_plain_dir() {
+        let dir = tempdir().unwrap();
+        assert!(!is_git_repo(dir.path()));
+    }
+
+    #[test]
+    fn is_git_repo_returns_true_after_init() {
+        let dir = tempdir().unwrap();
+        git_test(dir.path(), &["init"]);
+        assert!(is_git_repo(dir.path()));
+    }
+
+    #[test]
+    fn pull_ff_only_fails_on_non_repo() {
+        let dir = tempdir().unwrap();
+        assert!(pull_ff_only(dir.path()).is_err());
+    }
+
+    #[test]
+    fn is_behind_remote_returns_false_for_non_repo() {
+        let dir = tempdir().unwrap();
+        assert!(!is_behind_remote(dir.path()));
+    }
+
+    #[test]
+    fn is_behind_remote_returns_false_when_no_remote() {
+        let dir = tempdir().unwrap();
+        setup_repo(dir.path());
+        assert!(!is_behind_remote(dir.path()));
+    }
+
+    #[test]
+    fn is_behind_remote_returns_false_when_up_to_date() {
+        let remote = tempdir().unwrap();
+        setup_repo(remote.path());
+        let local = tempdir().unwrap();
+        git_test(
+            local.path().parent().unwrap(),
+            &[
+                "clone",
+                remote.path().to_str().unwrap(),
+                local.path().to_str().unwrap(),
+            ],
+        );
+        assert!(!is_behind_remote(local.path()));
+    }
+
+    #[test]
+    fn is_behind_remote_returns_true_when_behind() {
+        let remote = tempdir().unwrap();
+        setup_repo(remote.path());
+        let local = tempdir().unwrap();
+        git_test(
+            local.path().parent().unwrap(),
+            &[
+                "clone",
+                remote.path().to_str().unwrap(),
+                local.path().to_str().unwrap(),
+            ],
+        );
+        // Advance remote
+        std::fs::write(remote.path().join("file.txt"), "v2").unwrap();
+        git_test(remote.path(), &["add", "-A"]);
+        git_test(remote.path(), &["commit", "-m", "update"]);
+        // Fetch without merging
+        fetch_origin(local.path()).unwrap();
+        assert!(is_behind_remote(local.path()));
+    }
+}
