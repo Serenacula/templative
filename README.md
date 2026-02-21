@@ -25,18 +25,10 @@ Download a pre-built binary from the [releases page](https://github.com/serenacu
 ```sh
 mkdir -p ~/.zsh/completions
 templative completions zsh > ~/.zsh/completions/_templative
+echo 'fpath=(~/.zsh/completions $fpath)' >> ~/.zshrc
+echo 'autoload -Uz compinit && compinit' >> ~/.zshrc
+source ~/.zshrc
 ```
-
-Then add these lines to your `~/.zshrc` if they aren't already there (they must come before any existing `compinit` call):
-
-```sh
-fpath=(~/.zsh/completions $fpath)
-autoload -Uz compinit && compinit
-```
-
-Reload your shell: `source ~/.zshrc`
-
----
 
 **bash:**
 
@@ -44,11 +36,8 @@ Reload your shell: `source ~/.zshrc`
 mkdir -p ~/.bash_completions
 templative completions bash > ~/.bash_completions/templative
 echo 'source ~/.bash_completions/templative' >> ~/.bashrc
+source ~/.bashrc
 ```
-
-Reload your shell: `source ~/.bashrc`
-
----
 
 **fish:**
 
@@ -56,17 +45,12 @@ Reload your shell: `source ~/.bashrc`
 templative completions fish > ~/.config/fish/completions/templative.fish
 ```
 
-Fish picks this up automatically — no further config needed.
-
----
-
 **PowerShell:**
 
 ```sh
 templative completions powershell >> $PROFILE
+. $PROFILE
 ```
-
-Reload your profile: `. $PROFILE`
 
 ---
 
