@@ -3,6 +3,12 @@ name: homebrew
 on:
   release:
     types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to use (e.g. v0.6.5)"
+        required: true
+        type: string
 
 jobs:
   update-formula:
@@ -17,7 +23,7 @@ jobs:
 
       - name: Generate formula
         env:
-          TAG: ${{ github.event.release.tag_name }}
+          TAG: ${{ github.event.release.tag_name || github.event.inputs.tag }}
         run: |
           VERSION="${TAG#v}"
           BASE_URL="https://github.com/serenacula/templative/releases/download/${TAG}"
@@ -73,7 +79,7 @@ jobs:
 
       - name: Commit and push
         env:
-          TAG: ${{ github.event.release.tag_name }}
+          TAG: ${{ github.event.release.tag_name || github.event.inputs.tag }}
         run: |
           cd tap
           git config user.name "release-bot"
