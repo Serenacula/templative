@@ -6,11 +6,35 @@ Git is initialized by default (with an initial commit) when you create a project
 
 ## Commands
 
--   `templative init TEMPLATE [PATH]` — Copy a template into PATH (default: current directory), then run `git init` and an initial commit.
--   `templative add [PATH] [--name NAME]` — Register an existing directory as a template (default PATH: current directory; default name: directory name).
--   `templative change TEMPLATE [FLAGS]` — Change and set custom features for individual templates.
--   `templative remove TEMPLATE` — Remove a template from the registry. Does not delete the actual template.
--   `templative list` — Show registered templates and their paths.
+```
+templative init TEMPLATE [PATH]
+```
+Copy a template into PATH (default: current directory), then run `git init` and an initial commit.
+
+```
+templative add [PATH] [--name NAME]
+```
+Register an existing directory as a template (default PATH: current directory; default name: directory name).
+
+```
+templative change TEMPLATE [FLAGS]
+```
+Change and set custom features for individual templates.
+
+```
+templative remove TEMPLATE...
+```
+Remove one or more templates from the registry. Does not delete the actual files.
+
+```
+templative update [TEMPLATE] [--check]
+```
+Update cached git templates. Omit name to update all. `--check` reports what's out of date without applying changes.
+
+```
+templative list
+```
+Show registered templates and their paths.
 
 Optional flags are available to view with `--help`. This also applies to subcommands, e.g. `templative change --help`.
 
