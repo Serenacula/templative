@@ -7,16 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0](https://github.com/Serenacula/templative/compare/v0.6.5...v1.0.0) - 2026-02-21
+
+### Added
+
+-   add manual trigger to homebrew workflow
+
+### Fixed
+
+-   remove stale --no-cache from bash completions
+
 ## [0.6.5](https://github.com/Serenacula/templative/compare/v0.6.4...v0.6.5) - 2026-02-20
 
 ### Added
 
-- allow removing multiple templates at once
-- add templative update command
+-   allow removing multiple templates at once
+-   add templative update command
 
 ### Fixed
 
-- move --color/--no-color flags to list subcommand
+-   move --color/--no-color flags to list subcommand
 
 ## [0.6.4](https://github.com/Serenacula/templative/compare/v0.6.3...v0.6.4) - 2026-02-20
 
