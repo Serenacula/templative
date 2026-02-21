@@ -5,6 +5,8 @@ mod init;
 mod list;
 mod remove;
 mod update;
+#[cfg(test)]
+mod tests;
 
 pub use add::cmd_add;
 pub use change::{cmd_change, ChangeOptions};
