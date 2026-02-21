@@ -19,7 +19,20 @@ Optional flags are available to view with `--help`. This also applies to subcomm
 
 ## Install
 
-Download a pre-built binary from the [releases page](https://github.com/serenacula/templative/releases).
+**Homebrew:**
+
+```sh
+brew tap serenacula/tap
+brew install templative
+```
+
+**Cargo:**
+
+```sh
+cargo install templative
+```
+
+Or download a pre-built binary from the [releases page](https://github.com/serenacula/templative/releases).
 
 ### Completions
 
