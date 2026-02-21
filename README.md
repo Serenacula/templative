@@ -4,45 +4,6 @@ A tiny CLI for instantiating project templates from local directories. Templates
 
 Git is initialized by default (with an initial commit) when you create a project from a template.
 
-## Install
-
-Download a pre-built binary from the [releases page](https://github.com/serenacula/templative/releases).
-
-### Completions
-
-Generate a completion script for your shell and place it where your shell expects it.
-
-**zsh** — add to a directory in `$fpath`, e.g.:
-
-```sh
-templative completions zsh > ~/.zsh/completions/_templative
-```
-
-**bash** — source from your `.bashrc`:
-
-```sh
-templative completions bash > ~/.bash_completions/templative
-echo 'source ~/.bash_completions/templative' >> ~/.bashrc
-```
-
-**fish**:
-
-```sh
-templative completions fish > ~/.config/fish/completions/templative.fish
-```
-
-**powershell** — add to your profile:
-
-```sh
-templative completions powershell >> $PROFILE
-```
-
-To check whether an installed script is up to date after upgrading templative:
-
-```sh
-templative completions zsh --check ~/.zsh/completions/_templative
-```
-
 ## Commands
 
 -   `templative init TEMPLATE [PATH]` — Copy a template into PATH (default: current directory), then run `git init` and an initial commit.
@@ -53,6 +14,68 @@ templative completions zsh --check ~/.zsh/completions/_templative
 
 Optional flags are available to view with `--help`. This also applies to subcommands, e.g. `templative change --help`.
 
+## Install
+
+Download a pre-built binary from the [releases page](https://github.com/serenacula/templative/releases).
+
+### Completions
+
+**zsh:**
+
+```sh
+mkdir -p ~/.zsh/completions
+templative completions zsh > ~/.zsh/completions/_templative
+```
+
+Then add these lines to your `~/.zshrc` if they aren't already there (they must come before any existing `compinit` call):
+
+```sh
+fpath=(~/.zsh/completions $fpath)
+autoload -Uz compinit && compinit
+```
+
+Reload your shell: `source ~/.zshrc`
+
+---
+
+**bash:**
+
+```sh
+mkdir -p ~/.bash_completions
+templative completions bash > ~/.bash_completions/templative
+echo 'source ~/.bash_completions/templative' >> ~/.bashrc
+```
+
+Reload your shell: `source ~/.bashrc`
+
+---
+
+**fish:**
+
+```sh
+templative completions fish > ~/.config/fish/completions/templative.fish
+```
+
+Fish picks this up automatically — no further config needed.
+
+---
+
+**PowerShell:**
+
+```sh
+templative completions powershell >> $PROFILE
+```
+
+Reload your profile: `. $PROFILE`
+
+---
+
+To check whether an installed script is up to date after upgrading templative:
+
+```sh
+templative completions zsh --check ~/.zsh/completions/_templative
+```
+
 ## Config
 
 The config can be used to set values that apply across all templates, or which affect tool functionality. Values here can be overridden by settings in `templates.json` or with flags.
@@ -61,7 +84,7 @@ The config can be used to set values that apply across all templates, or which a
     -   Linux / macOS: `~/.config/templative/config.json`
     -   Windows: `%APPDATA%\templative\templative\config.json`
 
-A default config is created automatically if there isn't one:
+A default config is created automatically if there isn't one. This is the default config created, with comments added:
 
 ```json
 {
@@ -110,6 +133,7 @@ By default optional fields are not set. In this case they fallback to the config
             "location": "/templates/example-template",
 
             // below are optional features specific to templates
+            // these are not defaults, they're just examples
 
             // a description for `template list`
             "description": "an example template",
@@ -120,7 +144,7 @@ By default optional fields are not set. In this case they fallback to the config
             // hook that runs after init
             "post-init": "ls -l",
 
-            // below are options that override the config behaviours
+            // below are optional features that override the config behaviours
 
             "git": "fresh",
             "exclude": ["target"],
