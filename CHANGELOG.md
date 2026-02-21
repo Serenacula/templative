@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.1](https://github.com/Serenacula/templative/compare/v1.0.0...v1.0.1) - 2026-02-21
+
+### Fixed
+
+-   use cmd /c for hooks on Windows instead of sh -c
+-   only write config to disk when fields are missing or changed
+-   suggest template names for all positions in remove completion
+-   move --color/--no-color completions from global to list subcommand
+
+### Other
+
+-   note that preserve mode ignores exclude and write-mode
+-   add integration tests for cmd_add, cmd_remove, cmd_list
+-   pin rust toolchain to 1.93.1
+
 ## [1.0.0](https://github.com/Serenacula/templative/compare/v0.6.5...v1.0.0) - 2026-02-21
 
 ### Added
