@@ -1,0 +1,83 @@
+name: homebrew
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  update-formula:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout tap repo
+        uses: actions/checkout@v4
+        with:
+          repository: serenacula/homebrew-tap
+          token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          path: tap
+
+      - name: Generate formula
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          VERSION="${TAG#v}"
+          BASE_URL="https://github.com/serenacula/templative/releases/download/${TAG}"
+
+          fetch_sha256() {
+            curl -sL "${BASE_URL}/$1.sha256" | awk '{print $1}'
+          }
+
+          SHA_DARWIN_ARM64=$(fetch_sha256 "templative-aarch64-apple-darwin.tar.xz")
+          SHA_DARWIN_AMD64=$(fetch_sha256 "templative-x86_64-apple-darwin.tar.xz")
+          SHA_LINUX_ARM64=$(fetch_sha256 "templative-aarch64-unknown-linux-gnu.tar.xz")
+          SHA_LINUX_AMD64=$(fetch_sha256 "templative-x86_64-unknown-linux-gnu.tar.xz")
+
+          mkdir -p tap/Formula
+          cat > tap/Formula/templative.rb << FORMULA
+          class Templative < Formula
+            desc "A tiny CLI for managing project templates"
+            homepage "https://github.com/serenacula/templative"
+            version "${VERSION}"
+            license "MIT"
+
+            on_macos do
+              on_arm do
+                url "${BASE_URL}/templative-aarch64-apple-darwin.tar.xz"
+                sha256 "${SHA_DARWIN_ARM64}"
+              end
+              on_intel do
+                url "${BASE_URL}/templative-x86_64-apple-darwin.tar.xz"
+                sha256 "${SHA_DARWIN_AMD64}"
+              end
+            end
+
+            on_linux do
+              on_arm do
+                url "${BASE_URL}/templative-aarch64-unknown-linux-gnu.tar.xz"
+                sha256 "${SHA_LINUX_ARM64}"
+              end
+              on_intel do
+                url "${BASE_URL}/templative-x86_64-unknown-linux-gnu.tar.xz"
+                sha256 "${SHA_LINUX_AMD64}"
+              end
+            end
+
+            def install
+              bin.install "templative"
+            end
+
+            test do
+              system "#{bin}/templative", "--version"
+            end
+          end
+          FORMULA
+
+      - name: Commit and push
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          cd tap
+          git config user.name "release-bot"
+          git config user.email "release-bot@users.noreply.github.com"
+          git add Formula/templative.rb
+          git commit -m "release: update templative to ${TAG}"
+          git push
