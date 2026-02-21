@@ -1,7 +1,7 @@
-pub const VERSION: u32 = 4;
+pub const VERSION: u32 = 5;
 
 pub const SCRIPT: &str = r#"#compdef templative
-# templative-completions-version: 4
+# templative-completions-version: 5
 
 _templative_template_names() {
   local -a names
@@ -70,7 +70,7 @@ _templative() {
           ;;
         remove)
           _arguments \
-            '1:template:_templative_template_names'
+            '*:template:_templative_template_names'
           ;;
         list)
           _arguments \

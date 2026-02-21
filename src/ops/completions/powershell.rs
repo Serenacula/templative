@@ -1,6 +1,6 @@
-pub const VERSION: u32 = 4;
+pub const VERSION: u32 = 5;
 
-pub const SCRIPT: &str = r#"# templative-completions-version: 4
+pub const SCRIPT: &str = r#"# templative-completions-version: 5
 
 Register-ArgumentCompleter -Native -CommandName templative -ScriptBlock {
     param($wordToComplete, $commandAst, $cursorPosition)
@@ -46,8 +46,7 @@ Register-ArgumentCompleter -Native -CommandName templative -ScriptBlock {
                 }
             }
             'remove' {
-                if ($prev -eq 'remove') { templative list --names-only 2>$null }
-                else { @() }
+                templative list --names-only 2>$null
             }
             'list' {
                 @('--names-only', '--color', '--no-color', '--help', '-h')

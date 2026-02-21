@@ -1,6 +1,6 @@
-pub const VERSION: u32 = 5;
+pub const VERSION: u32 = 6;
 
-pub const SCRIPT: &str = r#"# templative-completions-version: 5
+pub const SCRIPT: &str = r#"# templative-completions-version: 6
 
 _templative() {
   local cur="${COMP_WORDS[$COMP_CWORD]}"
@@ -62,7 +62,7 @@ _templative() {
       esac
       ;;
     remove)
-      if [[ $COMP_CWORD -eq 2 ]]; then
+      if [[ $COMP_CWORD -ge 2 ]]; then
         COMPREPLY=($(compgen -W "$(templative list --names-only 2>/dev/null)" -- "$cur"))
       fi
       ;;
