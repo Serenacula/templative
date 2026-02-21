@@ -1,8 +1,11 @@
 name: homebrew
 
 on:
-  release:
-    types: [published]
+  workflow_run:
+    workflows:
+      - dist
+    types:
+      - completed
   workflow_dispatch:
     inputs:
       tag:
@@ -14,6 +17,12 @@ jobs:
   update-formula:
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout main repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
       - name: Checkout tap repo
         uses: actions/checkout@v4
         with:
@@ -21,9 +30,29 @@ jobs:
           token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
           path: tap
 
-      - name: Generate formula
+      - name: Resolve tag
+        id: tag
         env:
-          TAG: ${{ github.event.release.tag_name || github.event.inputs.tag }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+          MANUAL_TAG: ${{ github.event.inputs.tag }}
+        run: |
+          if [ -n "${MANUAL_TAG}" ]; then
+            echo "tag=${MANUAL_TAG}" >> "${GITHUB_OUTPUT}"
+          else
+            tag="$(git tag --points-at "${HEAD_SHA}" | sort -V | tail -n1)"
+            if [ -z "${tag}" ]; then
+              echo "No tag found at ${HEAD_SHA}, skipping."
+              echo "tag=" >> "${GITHUB_OUTPUT}"
+            else
+              echo "tag=${tag}" >> "${GITHUB_OUTPUT}"
+            fi
+          fi
+
+      - name: Generate formula
+        if: steps.tag.outputs.tag != ''
+        env:
+          TAG: ${{ steps.tag.outputs.tag }}
         run: |
           VERSION="${TAG#v}"
           BASE_URL="https://github.com/serenacula/templative/releases/download/${TAG}"
@@ -78,8 +107,9 @@ jobs:
           FORMULA
 
       - name: Commit and push
+        if: steps.tag.outputs.tag != ''
         env:
-          TAG: ${{ github.event.release.tag_name || github.event.inputs.tag }}
+          TAG: ${{ steps.tag.outputs.tag }}
         run: |
           cd tap
           git config user.name "release-bot"
