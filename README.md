@@ -25,10 +25,16 @@ Download a pre-built binary from the [releases page](https://github.com/serenacu
 ```sh
 mkdir -p ~/.zsh/completions
 templative completions zsh > ~/.zsh/completions/_templative
-echo 'fpath=(~/.zsh/completions $fpath)' >> ~/.zshrc
-echo 'autoload -Uz compinit && compinit' >> ~/.zshrc
-source ~/.zshrc
 ```
+
+Then add these two lines to your `~/.zshrc` **before** any existing `compinit` call (or at the end if you don't have one):
+
+```sh
+fpath=(~/.zsh/completions $fpath)
+autoload -Uz compinit && compinit
+```
+
+Then: `source ~/.zshrc`
 
 **bash:**
 
