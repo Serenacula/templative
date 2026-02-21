@@ -38,8 +38,15 @@ pub fn is_dangerous_path(path: &std::path::Path) -> bool {
 }
 
 pub fn run_hook(command: &str, working_dir: &std::path::Path) -> Result<()> {
+    #[cfg(unix)]
     let output = std::process::Command::new("sh")
         .args(["-c", command])
+        .current_dir(working_dir)
+        .output()
+        .context("failed to execute hook")?;
+    #[cfg(not(unix))]
+    let output = std::process::Command::new("cmd")
+        .args(["/c", command])
         .current_dir(working_dir)
         .output()
         .context("failed to execute hook")?;
