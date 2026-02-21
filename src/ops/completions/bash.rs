@@ -1,6 +1,6 @@
-pub const VERSION: u32 = 3;
+pub const VERSION: u32 = 4;
 
-pub const SCRIPT: &str = r#"# templative-completions-version: 3
+pub const SCRIPT: &str = r#"# templative-completions-version: 4
 
 _templative() {
   local cur="${COMP_WORDS[$COMP_CWORD]}"
@@ -51,8 +51,6 @@ _templative() {
           COMPREPLY=($(compgen -W "fresh preserve no-git unset" -- "$cur")) ;;
         --write-mode)
           COMPREPLY=($(compgen -W "strict no-overwrite skip-overwrite overwrite ask unset" -- "$cur")) ;;
-        --no-cache)
-          COMPREPLY=($(compgen -W "true false unset" -- "$cur")) ;;
         --location)
           COMPREPLY=($(compgen -d -- "$cur")) ;;
         --name|--description|--pre-init|--post-init|--git-ref|--exclude)
@@ -60,7 +58,7 @@ _templative() {
         change)
           COMPREPLY=($(compgen -W "$(templative list --names-only 2>/dev/null)" -- "$cur")) ;;
         *)
-          COMPREPLY=($(compgen -W "--name --description --unset-description --location --git --pre-init --unset-pre-init --post-init --unset-post-init --git-ref --unset-git-ref --no-cache --exclude --clear-exclude --write-mode --help -h" -- "$cur")) ;;
+          COMPREPLY=($(compgen -W "--name --description --unset-description --location --git --pre-init --unset-pre-init --post-init --unset-post-init --git-ref --unset-git-ref --exclude --clear-exclude --write-mode --help -h" -- "$cur")) ;;
       esac
       ;;
     remove)
