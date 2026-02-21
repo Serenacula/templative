@@ -1,6 +1,6 @@
-pub const VERSION: u32 = 3;
+pub const VERSION: u32 = 4;
 
-pub const SCRIPT: &str = r#"# templative-completions-version: 3
+pub const SCRIPT: &str = r#"# templative-completions-version: 4
 
 Register-ArgumentCompleter -Native -CommandName templative -ScriptBlock {
     param($wordToComplete, $commandAst, $cursorPosition)
@@ -19,7 +19,7 @@ Register-ArgumentCompleter -Native -CommandName templative -ScriptBlock {
     $prev = if ($words.Count -ge 2) { $words[$words.Count - 2].ToString() } else { '' }
 
     $completions = if ($null -eq $subcommand) {
-        $subcommands + @('--color', '--no-color', '--version', '-v', '--help', '-h')
+        $subcommands + @('--version', '-v', '--help', '-h')
     } else {
         switch ($subcommand) {
             'init' {

@@ -1,7 +1,7 @@
-pub const VERSION: u32 = 3;
+pub const VERSION: u32 = 4;
 
 pub const SCRIPT: &str = r#"#compdef templative
-# templative-completions-version: 3
+# templative-completions-version: 4
 
 _templative_template_names() {
   local -a names
@@ -14,8 +14,6 @@ _templative() {
 
   _arguments -C \
     '(-v --version)'{-v,--version}'[Print version]' \
-    '--color[Force coloured output]' \
-    '--no-color[Disable coloured output]' \
     '1:command:->command' \
     '*::args:->args'
 
@@ -76,7 +74,9 @@ _templative() {
           ;;
         list)
           _arguments \
-            '--names-only[Print only template names]'
+            '--names-only[Print only template names]' \
+            '--color[Force coloured output]' \
+            '--no-color[Disable coloured output]'
           ;;
         completions)
           _arguments \

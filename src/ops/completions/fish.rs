@@ -1,13 +1,11 @@
-pub const VERSION: u32 = 3;
+pub const VERSION: u32 = 4;
 
-pub const SCRIPT: &str = r#"# templative-completions-version: 3
+pub const SCRIPT: &str = r#"# templative-completions-version: 4
 
 # Disable file completion globally
 complete -c templative -f
 
 # Global flags
-complete -c templative -n 'not __fish_seen_subcommand_from init add change remove list completions update' -l color -d 'Force coloured output'
-complete -c templative -n 'not __fish_seen_subcommand_from init add change remove list completions update' -l no-color -d 'Disable coloured output'
 complete -c templative -n 'not __fish_seen_subcommand_from init add change remove list completions update' -s v -l version -d 'Print version'
 
 # Subcommands
@@ -72,6 +70,8 @@ complete -c templative -n '__fish_seen_subcommand_from remove' -a '(templative l
 
 # list
 complete -c templative -n '__fish_seen_subcommand_from list' -l names-only -d 'Print only template names'
+complete -c templative -n '__fish_seen_subcommand_from list' -l color -d 'Force coloured output'
+complete -c templative -n '__fish_seen_subcommand_from list' -l no-color -d 'Disable coloured output'
 
 # completions
 complete -c templative -n '__fish_seen_subcommand_from completions' -a 'zsh bash fish powershell'

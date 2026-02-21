@@ -1,6 +1,6 @@
-pub const VERSION: u32 = 4;
+pub const VERSION: u32 = 5;
 
-pub const SCRIPT: &str = r#"# templative-completions-version: 4
+pub const SCRIPT: &str = r#"# templative-completions-version: 5
 
 _templative() {
   local cur="${COMP_WORDS[$COMP_CWORD]}"
@@ -8,7 +8,7 @@ _templative() {
   local subcommands="init add change remove list completions update"
 
   if [[ $COMP_CWORD -eq 1 ]]; then
-    COMPREPLY=($(compgen -W "$subcommands --color --no-color --version -v --help -h" -- "$cur"))
+    COMPREPLY=($(compgen -W "$subcommands --version -v --help -h" -- "$cur"))
     return
   fi
 
