@@ -39,10 +39,8 @@ Then: `source ~/.zshrc`
 **bash:**
 
 ```sh
-mkdir -p ~/.bash_completions
-templative completions bash > ~/.bash_completions/templative
-echo 'source ~/.bash_completions/templative' >> ~/.bashrc
-source ~/.bashrc
+mkdir -p ~/.local/share/bash-completion/completions
+templative completions bash > ~/.local/share/bash-completion/completions/templative
 ```
 
 **fish:**
