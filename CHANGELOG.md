@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.2](https://github.com/Serenacula/templative/compare/v1.0.1...v1.0.2) - 2026-02-21
+
+### Fixed
+
+-   trigger homebrew update from dist workflow completion instead of release event
+
 ## [1.0.1](https://github.com/Serenacula/templative/compare/v1.0.0...v1.0.1) - 2026-02-21
 
 ### Fixed
