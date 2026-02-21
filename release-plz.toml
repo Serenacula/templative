@@ -1,9 +1,4 @@
 [workspace]
-
-# Create git tags and GitHub releases, but do not publish to crates.io.
 git_tag_enable = true
 git_release_enable = true
 publish = true
-
-# Release on pushes to main (manual version bump flow).
-release_always = true
