@@ -6,6 +6,9 @@ use anyhow::{Context, Result};
 use directories::ProjectDirs;
 
 pub fn config_dir() -> Result<PathBuf> {
+    if let Some(override_dir) = std::env::var_os("TEMPLATIVE_CONFIG_DIR") {
+        return Ok(PathBuf::from(override_dir));
+    }
     #[cfg(unix)]
     {
         let base = std::env::var_os("XDG_CONFIG_HOME")

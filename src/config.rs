@@ -69,7 +69,18 @@ impl Config {
     pub fn load() -> Result<Self> {
         let path = Self::config_path()?;
         let config = Self::load_from_path(&path)?;
-        config.save_to_path(&path)?;
+        let needs_write = if path.exists() {
+            let on_disk = fs::read_to_string(&path)
+                .with_context(|| format!("failed to read config: {}", path.display()))?;
+            let canonical = serde_json::to_string_pretty(&config)
+                .context("failed to serialize config")?;
+            on_disk.trim() != canonical.trim()
+        } else {
+            true
+        };
+        if needs_write {
+            config.save_to_path(&path)?;
+        }
         Ok(config)
     }
 
@@ -246,6 +257,34 @@ mod tests {
     fn default_write_mode_is_strict() {
         let config = Config::new();
         assert_eq!(config.write_mode, WriteMode::Strict);
+    }
+
+    static ENV_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
+    #[test]
+    fn load_does_not_rewrite_up_to_date_config() {
+        let _guard = ENV_LOCK.lock().unwrap();
+        let temp = tempfile::tempdir().unwrap();
+        std::env::set_var("TEMPLATIVE_CONFIG_DIR", temp.path());
+        let config = Config::new();
+        config.save_to_path(&temp.path().join("config.json")).unwrap();
+        let path = temp.path().join("config.json");
+        let modified_before = std::fs::metadata(&path).unwrap().modified().unwrap();
+        std::thread::sleep(std::time::Duration::from_millis(10));
+        Config::load().unwrap();
+        let modified_after = std::fs::metadata(&path).unwrap().modified().unwrap();
+        std::env::remove_var("TEMPLATIVE_CONFIG_DIR");
+        assert_eq!(modified_before, modified_after);
+    }
+
+    #[test]
+    fn load_writes_config_when_missing() {
+        let _guard = ENV_LOCK.lock().unwrap();
+        let temp = tempfile::tempdir().unwrap();
+        std::env::set_var("TEMPLATIVE_CONFIG_DIR", temp.path());
+        Config::load().unwrap();
+        std::env::remove_var("TEMPLATIVE_CONFIG_DIR");
+        assert!(temp.path().join("config.json").exists());
     }
 
     #[test]
