@@ -99,9 +99,10 @@ A default config is created automatically if there isn't one. This is the defaul
     "color": true,
 
     // git init behaviour
-    // fresh: start a new git
-    // preserve: clone the original git
-    // no-git: do not setup git
+    // fresh: copy the template files and start a new git history
+    // preserve: clone the template repo, keeping its full git history
+    //   note: preserve ignores exclude patterns and write-mode — it clones the repo as-is
+    // no-git: copy files only, no git setup
     "git": "fresh",
 
     // files excluded when creating a new template - glob patterns are accepted
