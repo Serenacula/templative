@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.6](https://github.com/Serenacula/templative/compare/v0.6.5...v0.6.6) - 2026-02-21
+
+### Other
+
+- use standard bash-completion user path
+- clarify zsh fpath must precede existing compinit
+- simplify completions setup to command-only blocks
+- expand completions setup instructions per shell
+
 ## [0.6.5](https://github.com/Serenacula/templative/compare/v0.6.4...v0.6.5) - 2026-02-20
 
 ### Added
