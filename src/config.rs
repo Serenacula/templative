@@ -98,11 +98,6 @@ impl Config {
         Ok(config)
     }
 
-    #[allow(dead_code)]
-    pub fn save(&self) -> Result<()> {
-        self.save_to_path(&Self::config_path()?)
-    }
-
     pub fn save_to_path(&self, path: &Path) -> Result<()> {
         let parent = path.parent().context("config path has no parent")?;
         fs::create_dir_all(parent)
@@ -259,13 +254,11 @@ mod tests {
         assert_eq!(config.write_mode, WriteMode::Strict);
     }
 
-    static ENV_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
-
     #[test]
     fn load_does_not_rewrite_up_to_date_config() {
-        let _guard = ENV_LOCK.lock().unwrap();
+        let _guard = crate::test_env::ENV_LOCK.lock().unwrap();
         let temp = tempfile::tempdir().unwrap();
-        std::env::set_var("TEMPLATIVE_CONFIG_DIR", temp.path());
+        unsafe { std::env::set_var("TEMPLATIVE_CONFIG_DIR", temp.path()); }
         let config = Config::new();
         config.save_to_path(&temp.path().join("config.json")).unwrap();
         let path = temp.path().join("config.json");
@@ -273,17 +266,17 @@ mod tests {
         std::thread::sleep(std::time::Duration::from_millis(10));
         Config::load().unwrap();
         let modified_after = std::fs::metadata(&path).unwrap().modified().unwrap();
-        std::env::remove_var("TEMPLATIVE_CONFIG_DIR");
+        unsafe { std::env::remove_var("TEMPLATIVE_CONFIG_DIR"); }
         assert_eq!(modified_before, modified_after);
     }
 
     #[test]
     fn load_writes_config_when_missing() {
-        let _guard = ENV_LOCK.lock().unwrap();
+        let _guard = crate::test_env::ENV_LOCK.lock().unwrap();
         let temp = tempfile::tempdir().unwrap();
-        std::env::set_var("TEMPLATIVE_CONFIG_DIR", temp.path());
+        unsafe { std::env::set_var("TEMPLATIVE_CONFIG_DIR", temp.path()); }
         Config::load().unwrap();
-        std::env::remove_var("TEMPLATIVE_CONFIG_DIR");
+        unsafe { std::env::remove_var("TEMPLATIVE_CONFIG_DIR"); }
         assert!(temp.path().join("config.json").exists());
     }
 
