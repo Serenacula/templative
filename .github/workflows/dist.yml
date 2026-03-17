@@ -86,12 +86,21 @@ jobs:
             target: x86_64-unknown-linux-musl
           - runner: ubuntu-latest
             target: aarch64-unknown-linux-gnu
+            zigbuild: true
+          - runner: ubuntu-latest
+            target: aarch64-unknown-linux-musl
+            zigbuild: true
+          - runner: ubuntu-latest
+            target: armv7-unknown-linux-gnueabihf
+            zigbuild: true
           - runner: macos-latest
             target: x86_64-apple-darwin
           - runner: macos-latest
             target: aarch64-apple-darwin
           - runner: windows-latest
             target: x86_64-pc-windows-msvc
+          - runner: windows-latest
+            target: aarch64-pc-windows-msvc
     runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v4
@@ -108,19 +117,19 @@ jobs:
         with:
           tool: cargo-dist
 
-      - name: Install cargo-zigbuild for Linux ARM GNU
-        if: matrix.target == 'aarch64-unknown-linux-gnu'
+      - name: Install cargo-zigbuild
+        if: matrix.zigbuild == true
         run: cargo-binstall --no-confirm cargo-zigbuild
 
-      - name: Install zig for Linux ARM GNU
-        if: matrix.target == 'aarch64-unknown-linux-gnu'
+      - name: Install zig
+        if: matrix.zigbuild == true
         continue-on-error: true
         uses: mlugg/setup-zig@v1
         with:
           version: 0.14.0
 
-      - name: Fallback install zig via apt for Linux ARM GNU
-        if: matrix.target == 'aarch64-unknown-linux-gnu'
+      - name: Fallback install zig via apt
+        if: matrix.zigbuild == true
         run: |
           if ! command -v zig >/dev/null 2>&1; then
             sudo apt-get update
