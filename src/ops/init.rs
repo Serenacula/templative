@@ -129,9 +129,7 @@ pub fn cmd_init(
     }
 
     if let Some(ref cmd) = resolved.post_init {
-        if let Err(err) = utilities::run_hook(cmd, &target_canonical) {
-            eprintln!("warning: post-init hook failed: {:#}", err);
-        }
+        utilities::run_hook(cmd, &target_canonical)?;
     }
 
     println!(
