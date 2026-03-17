@@ -22,7 +22,11 @@ impl ResolvedOptions {
     ) -> Self {
         let mut exclude = config.exclude.clone();
         if let Some(ref template_exclude) = template.exclude {
-            exclude.extend(template_exclude.iter().cloned());
+            for pattern in template_exclude {
+                if !exclude.contains(pattern) {
+                    exclude.push(pattern.clone());
+                }
+            }
         }
         Self {
             git: git_flag.or_else(|| template.git.clone()).unwrap_or_else(|| config.git.clone()),
