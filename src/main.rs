@@ -344,3 +344,11 @@ fn main() {
         std::process::exit(1);
     }
 }
+
+/// Shared test infrastructure. All tests that touch `TEMPLATIVE_CONFIG_DIR`
+/// must hold this lock to prevent parallel tests in different modules from
+/// racing on the same environment variable.
+#[cfg(test)]
+pub mod test_env {
+    pub static ENV_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+}

@@ -118,6 +118,33 @@ mod tests {
     }
 
     #[test]
+    #[cfg(unix)]
+    fn run_hook_succeeds_on_valid_command() {
+        let temp = tempfile::tempdir().unwrap();
+        let result = run_hook("true", temp.path());
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    #[cfg(unix)]
+    fn run_hook_fails_on_failing_command() {
+        let temp = tempfile::tempdir().unwrap();
+        let result = run_hook("false", temp.path());
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("hook failed"));
+    }
+
+    #[test]
+    #[cfg(unix)]
+    fn run_hook_runs_in_working_dir() {
+        let temp = tempfile::tempdir().unwrap();
+        std::fs::write(temp.path().join("sentinel"), "").unwrap();
+        // Succeeds only if cwd is the temp dir (the file exists there).
+        let result = run_hook("test -f sentinel", temp.path());
+        assert!(result.is_ok());
+    }
+
+    #[test]
     fn cache_path_for_url_is_deterministic() {
         let path1 = cache_path_for_url("https://github.com/user/repo").unwrap();
         let path2 = cache_path_for_url("https://github.com/user/repo").unwrap();

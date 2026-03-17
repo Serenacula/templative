@@ -69,3 +69,29 @@ pub fn cmd_change(template_name: String, options: ChangeOptions) -> Result<()> {
     println!("updated {}", template_name);
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn empty_options() -> ChangeOptions {
+        ChangeOptions {
+            name: None,
+            description: None,
+            location: None,
+            git: None,
+            pre_init: None,
+            post_init: None,
+            git_ref: None,
+            exclude: None,
+            write_mode: None,
+        }
+    }
+
+    #[test]
+    fn errors_when_no_changes_specified() {
+        let result = cmd_change("foo".into(), empty_options());
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("no changes specified"));
+    }
+}
