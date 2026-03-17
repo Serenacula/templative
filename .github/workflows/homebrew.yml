@@ -54,7 +54,6 @@ jobs:
         env:
           TAG: ${{ steps.tag.outputs.tag }}
         run: |
-          VERSION="${TAG#v}"
           BASE_URL="https://github.com/serenacula/templative/releases/download/${TAG}"
 
           fetch_sha256() {
@@ -71,7 +70,6 @@ jobs:
           class Templative < Formula
             desc "A tiny CLI for managing project templates"
             homepage "https://github.com/serenacula/templative"
-            version "${VERSION}"
             license "MIT"
 
             on_macos do
