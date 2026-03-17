@@ -96,9 +96,12 @@ fn relative_path_between(from_dir: &Path, to: &Path) -> PathBuf {
 /// - If target resolves outside the template, creates an absolute symlink.
 /// - If the target cannot be found (broken symlink), warns and preserves the original target.
 fn copy_symlink(source_path: &Path, dest_path: &Path, source_dir: &Path, dest_dir: &Path) -> Result<()> {
+    // Read the raw link target — may be relative or absolute, may or may not exist.
     let raw_target = fs::read_link(source_path)
         .with_context(|| format!("failed to read symlink: {}", source_path.display()))?;
 
+    // Resolve to an absolute path so we can test whether it falls inside the template tree.
+    // Relative targets are resolved from the directory containing the symlink (not source_dir).
     let source_parent = source_path.parent().unwrap_or(source_dir);
     let absolute_target = if raw_target.is_absolute() {
         raw_target.clone()
@@ -108,25 +111,34 @@ fn copy_symlink(source_path: &Path, dest_path: &Path, source_dir: &Path, dest_di
 
     let new_target: PathBuf = match absolute_target.canonicalize() {
         Ok(canonical_target) => {
+            // Canonicalize source_dir so we can reliably check whether the symlink target
+            // lives inside the template (strip_prefix needs both paths fully resolved).
             let canonical_source = source_dir
                 .canonicalize()
                 .unwrap_or_else(|_| source_dir.to_path_buf());
             if let Ok(target_rel) = canonical_target.strip_prefix(&canonical_source) {
+                // Target is inside the template tree.
                 if raw_target.is_relative() {
-                    // Same relative target works identically in the destination.
+                    // A relative-to-sibling link is structurally identical in the destination;
+                    // no adjustment needed — the same relative path resolves correctly.
                     raw_target
                 } else {
-                    // Absolute target inside template: compute relative from dest symlink location.
+                    // An absolute link pointing inside the template must be rewritten as a
+                    // relative link inside the destination tree so it still resolves correctly
+                    // regardless of where the destination lives on disk.
                     let dest_parent = dest_path.parent().unwrap_or(dest_dir);
                     let target_in_dest = dest_dir.join(target_rel);
                     relative_path_between(dest_parent, &target_in_dest)
                 }
             } else {
-                // Target is outside the template: use the canonical absolute path.
+                // Target is outside the template tree: keep the absolute canonical path so it
+                // still resolves to the same real file in the destination.
                 canonical_target
             }
         }
         Err(_) => {
+            // The link target does not exist (broken symlink). Preserve it as-is so the copy
+            // faithfully reproduces the source, and warn so the user is not surprised.
             eprintln!(
                 "warning: symlink '{}' points to '{}' which does not exist; creating anyway",
                 source_path.display(),
@@ -143,7 +155,7 @@ fn copy_symlink(source_path: &Path, dest_path: &Path, source_dir: &Path, dest_di
     #[cfg(not(unix))]
     {
         let _ = new_target;
-        anyhow::bail!("symlinks are not supported on this platform");
+        anyhow::bail!("symlinks are not supported on Windows");
     }
 
     Ok(())
